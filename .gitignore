@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# agent-only files (skills, agent configs, local agent state)
+/.agents/
+/.puku-cli/
