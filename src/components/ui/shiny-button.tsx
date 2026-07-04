@@ -35,17 +35,17 @@ interface ShinyButtonProps
 }
 
 export const ShinyButton = React.forwardRef<
-  HTMLButtonElement,
+  HTMLSpanElement,
   ShinyButtonProps
 >(({ children, className, ...props }, ref) => {
   // Extract text color class if specified, default to text-white
   const textClass = className?.split(" ").find(c => c.startsWith("text-")) || "text-white";
 
   return (
-    <motion.button
+    <motion.span
       ref={ref}
       className={cn(
-        "relative cursor-pointer rounded-lg border px-6 py-2 font-medium backdrop-blur-xl transition-shadow duration-300 ease-in-out hover:shadow dark:bg-[radial-gradient(circle_at_50%_0%,var(--primary)/10%_0%,transparent_60%)] dark:hover:shadow-[0_0_20px_var(--primary)/10%]",
+        "relative inline-block cursor-pointer rounded-lg border px-6 py-2 font-medium backdrop-blur-xl transition-shadow duration-300 ease-in-out hover:shadow dark:bg-[radial-gradient(circle_at_50%_0%,var(--primary)/10%_0%,transparent_60%)] dark:hover:shadow-[0_0_20px_var(--primary)/10%]",
         className
       )}
       {...animationProps}
@@ -75,8 +75,8 @@ export const ShinyButton = React.forwardRef<
         }}
         className="absolute inset-0 z-10 block rounded-[inherit] p-px"
       />
-    </motion.button>
-  )
+    </motion.span>
+  );
 })
 
 ShinyButton.displayName = "ShinyButton"
