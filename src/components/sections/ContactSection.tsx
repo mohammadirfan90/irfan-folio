@@ -1,13 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { submitContactFormAction } from "@/actions/contact";
 import { BlurFade } from "@/components/ui/blur-fade";
 import { Particles } from "@/components/ui/particles";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
+import { TypedText } from "@/components/ui/typed-text";
 
 interface SocialLink {
   label: string;
@@ -23,9 +20,11 @@ interface ContactSectionProps {
   socials?: SocialLink[];
 }
 
+type LogLine = { kind: "info" | "ok" | "err"; text: string };
+
 export function ContactSection({
   subtitle = "Ready for the next challenge",
-  title = "Let’s build something remarkable together.",
+  title = "Let's build something remarkable together.",
   email = "hello@devportfolio.com",
   phone = "+1 (555) 019-2834",
   whatsapp = "+15550192834",
@@ -36,30 +35,34 @@ export function ContactSection({
   ],
 }: ContactSectionProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [statusMsg, setStatusMsg] = useState("");
-  const [statusType, setStatusType] = useState<"success" | "error" | "">("");
+  const [logs, setLogs] = useState<LogLine[]>([]);
+  const [focusedField, setFocusedField] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement | null>(null);
+
+  const pushLog = (line: LogLine) => setLogs((prev) => [...prev, line]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
-    setStatusMsg("");
-    setStatusType("");
+    setLogs([]);
+    pushLog({ kind: "info", text: "$ send --confirm" });
+    pushLog({ kind: "info", text: "> validating payload..." });
 
     const formElement = e.currentTarget;
     const formData = new FormData(formElement);
     try {
       const res = await submitContactFormAction(formData);
       if (res.error) {
-        setStatusMsg(res.error);
-        setStatusType("error");
+        pushLog({ kind: "err", text: `> ✗ ${res.error}` });
+        pushLog({ kind: "err", text: "> abort. nothing sent." });
       } else {
-        setStatusMsg("Thank you! Your message has been sent successfully.");
-        setStatusType("success");
+        pushLog({ kind: "ok", text: "> ✓ message sent. i'll respond within 24h." });
+        pushLog({ kind: "info", text: "> session closed." });
         formElement.reset();
       }
     } catch (err: any) {
-      setStatusMsg(err.message || "Something went wrong.");
-      setStatusType("error");
+      pushLog({ kind: "err", text: `> ✗ ${err.message || "unknown error"}` });
+      pushLog({ kind: "err", text: "> abort. nothing sent." });
     } finally {
       setIsSubmitting(false);
     }
@@ -67,9 +70,41 @@ export function ContactSection({
 
   const formattedWhatsapp = whatsapp.replace(/[^0-9]/g, "");
 
+  // Field config — each renders as `> label: [input]_` in the terminal
+  const fields: Array<{
+    name: string;
+    label: string;
+    type?: string;
+    placeholder: string;
+    multiline?: boolean;
+    colSpan?: "half" | "full";
+  }> = [
+    { name: "name", label: "name", placeholder: "John Doe", colSpan: "half" },
+    {
+      name: "email",
+      label: "email",
+      type: "email",
+      placeholder: "john@example.com",
+      colSpan: "half",
+    },
+    {
+      name: "subject",
+      label: "subject",
+      placeholder: "Project inquiry / collaboration",
+      colSpan: "full",
+    },
+    {
+      name: "message",
+      label: "message",
+      placeholder: "Hi, i'd like to build...",
+      multiline: true,
+      colSpan: "full",
+    },
+  ];
+
   return (
     <section
-      className="dark relative py-section-gap-mobile md:py-section-gap-desktop bg-black text-on-primary overflow-hidden"
+      className="dark relative py-20 md:py-24 bg-black text-on-primary overflow-hidden"
       id="contact"
     >
       <Particles
@@ -82,177 +117,280 @@ export function ContactSection({
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-secondary to-transparent opacity-60 z-10" />
 
       <div className="relative z-10 max-w-container-max mx-auto px-margin-mobile md:px-gutter">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-center">
-          {/* Left Column: Info & Channels */}
-          <div className="lg:col-span-5 space-y-10 text-left">
-            <BlurFade delay={0.1} direction="up" inView>
-              <div>
-                <span className="font-label-mono text-label-mono text-secondary uppercase tracking-widest mb-4 block font-semibold">
-                  <span className="text-accent mr-1.5 select-none">//</span>
-                  {subtitle}
-                </span>
-                <h2 className="font-display text-4xl md:text-5xl font-bold tracking-tight text-white mb-6 leading-[1.1]">
-                  {title}
-                </h2>
+        {/* Compact header row — title + status + instant-tap chips */}
+        <div className="mb-8 lg:mb-10 flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 border-b border-white/10 pb-6">
+          <div className="flex-1 min-w-0">
+            <BlurFade delay={0.05} direction="up" inView>
+              <span className="font-label-mono text-label-mono text-secondary uppercase tracking-widest font-semibold">
+                <span className="text-accent mr-1.5 select-none">//</span>
+                {subtitle}
+              </span>
+            </BlurFade>
+            <BlurFade delay={0.12} direction="up" inView>
+              <h2 className="font-display text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight text-white mt-3 leading-[1.1]">
+                <TypedText text={title} speed={45} />
+              </h2>
+            </BlurFade>
+            <BlurFade delay={0.22} direction="up" inView>
+              <div className="mt-4 inline-flex items-center gap-2 font-label-mono text-label-mono text-white/55">
+                <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" aria-hidden="true" />
+                <span className="text-white/75">inbox open</span>
+                <span className="text-white/25">·</span>
+                <span>avg reply ~24h</span>
               </div>
             </BlurFade>
+          </div>
 
-            <BlurFade delay={0.2} direction="right" inView>
-              <div className="space-y-6 pt-6 border-t border-white/10">
-                {/* Email Channel */}
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-secondary shrink-0">
-                    <span className="material-symbols-outlined" style={{ fontSize: "20px" }}>mail</span>
-                  </div>
-                  <div>
-                    <h4 className="font-label-mono text-label-mono text-white/40 uppercase mb-1">Email Address</h4>
-                    <a href={`mailto:${email}`} className="text-white hover:text-secondary transition-colors font-body-md">
-                      {email}
-                    </a>
-                  </div>
+          {/* Right: instant-tap chips — escape hatch for non-tech visitors */}
+          <BlurFade delay={0.18} direction="left" inView>
+            <div className="flex flex-wrap gap-2 shrink-0">
+              <a
+                href={`mailto:${email}`}
+                className="group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-white/10 bg-white/[0.03] hover:border-accent/60 hover:bg-accent/5 font-label-mono text-label-mono text-white/70 hover:text-accent transition-colors"
+              >
+                <span className="text-white/40 group-hover:text-accent">↗</span>
+                <span>email</span>
+              </a>
+              {whatsapp && (
+                <a
+                  href={`https://wa.me/${formattedWhatsapp}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-white/10 bg-white/[0.03] hover:border-accent/60 hover:bg-accent/5 font-label-mono text-label-mono text-white/70 hover:text-accent transition-colors"
+                >
+                  <span className="text-white/40 group-hover:text-accent">↗</span>
+                  <span>whatsapp</span>
+                </a>
+              )}
+            </div>
+          </BlurFade>
+        </div>
+
+        {/* Terminal form — single column, centered, max-w-3xl = centerpiece */}
+        <div className="max-w-3xl mx-auto">
+          <BlurFade delay={0.1} direction="up" inView>
+            <div className="bg-white/5 border border-white/10 rounded-2xl shadow-xl overflow-hidden">
+              {/* Terminal chrome bar */}
+              <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/10 bg-white/[0.03]">
+                <div className="flex items-center gap-1.5" aria-hidden="true">
+                  <span className="w-2.5 h-2.5 rounded-full bg-white/20" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-white/20" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-white/20" />
+                </div>
+                <span className="flex-1 text-center font-label-mono text-[11px] uppercase tracking-widest text-white/40">
+                  ~/contact/send.sh
+                </span>
+                <span className="font-label-mono text-[11px] uppercase tracking-widest text-accent select-none" aria-hidden="true">
+                  ●
+                </span>
+              </div>
+
+              {/* Terminal body */}
+              <div className="p-5 md:p-6 font-label-mono text-sm">
+                {/* Opening transcript lines */}
+                <div className="space-y-1 text-white/50 mb-5 select-none">
+                  <p>
+                    <span className="text-accent">$</span> contact --init
+                  </p>
+                  <p>
+                    <span className="text-accent">&gt;</span> awaiting input. fill the lines below:
+                  </p>
                 </div>
 
-                {/* Phone Channel */}
-                {phone && (
-                  <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-secondary shrink-0">
-                      <span className="material-symbols-outlined" style={{ fontSize: "20px" }}>call</span>
-                    </div>
-                    <div>
-                      <h4 className="font-label-mono text-label-mono text-white/40 uppercase mb-1">Phone Number</h4>
-                      <a href={`tel:${phone.replace(/\s+/g, "")}`} className="text-white hover:text-secondary transition-colors font-body-md">
-                        {phone}
-                      </a>
-                    </div>
+                <form
+                  ref={formRef}
+                  onSubmit={handleSubmit}
+                  className="space-y-3 text-left"
+                >
+                  {/* Field rows — terminal-style `> label: [input]_` */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {fields
+                      .filter((f) => f.colSpan === "half")
+                      .map((field) => (
+                        <TerminalField
+                          key={field.name}
+                          field={field}
+                          focused={focusedField === field.name}
+                          onFocus={() => setFocusedField(field.name)}
+                          onBlur={() => setFocusedField(null)}
+                        />
+                      ))}
                   </div>
-                )}
 
-                {whatsapp && (
-                  <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-secondary shrink-0">
-                      <span className="material-symbols-outlined" style={{ fontSize: "20px" }}>chat</span>
-                    </div>
-                    <div>
-                      <h4 className="font-label-mono text-label-mono text-white/40 uppercase mb-1">WhatsApp Chat</h4>
-                      <a
-                        href={`https://wa.me/${formattedWhatsapp}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-white hover:text-secondary transition-colors font-body-md"
-                      >
-                        Chat Directly
-                      </a>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </BlurFade>
-
-            {/* Social Links */}
-            <BlurFade delay={0.3} direction="right" inView>
-              <div className="flex flex-wrap items-center gap-x-6 gap-y-3 pt-8 border-t border-white/10 w-full max-w-sm">
-                {socials.map((link) => (
-                  <a
-                    key={link.label}
-                    className="font-label-mono text-label-mono text-white/50 hover:text-white transition-colors"
-                    href={link.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    {link.label}
-                  </a>
-                ))}
-              </div>
-            </BlurFade>
-          </div>
-
-          {/* Right Column: Contact Form */}
-          <div className="lg:col-span-7">
-            <BlurFade delay={0.2} direction="left" inView>
-              <div className="bg-white/5 border border-white/10 p-8 rounded-2xl shadow-xl space-y-6">
-                <h3 className="font-headline-md text-headline-md text-white font-semibold">
-                  Send a Message
-                </h3>
-                
-                <form onSubmit={handleSubmit} className="space-y-4 text-left">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="name" className="text-white/60 text-xs font-label-mono uppercase tracking-wider">
-                        Your Name
-                      </Label>
-                      <Input
-                        id="name"
-                        name="name"
-                        required
-                        placeholder="John Doe"
-                        className="border-white/10 bg-white/5 text-white placeholder:text-white/20 focus-visible:border-secondary focus-visible:ring-secondary/20 h-10"
+                  {fields
+                    .filter((f) => f.colSpan === "full")
+                    .map((field) => (
+                      <TerminalField
+                        key={field.name}
+                        field={field}
+                        focused={focusedField === field.name}
+                        onFocus={() => setFocusedField(field.name)}
+                        onBlur={() => setFocusedField(null)}
                       />
+                    ))}
+
+                  {/* Submit command */}
+                  <div className="pt-2 flex items-center gap-3 flex-wrap">
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="group relative inline-flex items-center gap-2 px-4 py-2 rounded-md bg-accent text-accent-foreground font-label-mono text-sm font-bold uppercase tracking-widest hover:bg-accent/90 active:scale-[0.98] transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      <span aria-hidden="true">$</span>
+                      <span>{isSubmitting ? "sending..." : "send --confirm"}</span>
+                    </button>
+                    <span className="font-label-mono text-[11px] uppercase tracking-widest text-white/35 select-none">
+                      // tab to next · ⏎ to send
+                    </span>
+                  </div>
+
+                  {/* Live transcript log — appears after submit */}
+                  {logs.length > 0 && (
+                    <div className="mt-5 pt-4 border-t border-white/10 space-y-1">
+                      {logs.map((line, i) => (
+                        <p
+                          key={i}
+                          className={`leading-relaxed ${
+                            line.kind === "ok"
+                              ? "text-accent"
+                              : line.kind === "err"
+                                ? "text-red-400"
+                                : "text-white/50"
+                          }`}
+                        >
+                          {line.text}
+                        </p>
+                      ))}
+                      {!isSubmitting && (
+                        <p className="text-white/40 flex items-center gap-1 mt-1">
+                          <span className="text-accent">$</span>
+                          <span className="caret-blink text-accent select-none">_</span>
+                        </p>
+                      )}
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="email" className="text-white/60 text-xs font-label-mono uppercase tracking-wider">
-                        Email Address
-                      </Label>
-                      <Input
-                        id="email"
-                        name="email"
-                        type="email"
-                        required
-                        placeholder="john@example.com"
-                        className="border-white/10 bg-white/5 text-white placeholder:text-white/20 focus-visible:border-secondary focus-visible:ring-secondary/20 h-10"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="subject" className="text-white/60 text-xs font-label-mono uppercase tracking-wider">
-                      Subject
-                    </Label>
-                    <Input
-                      id="subject"
-                      name="subject"
-                      required
-                      placeholder="Project Inquiries / Collaboration"
-                      className="border-white/10 bg-white/5 text-white placeholder:text-white/20 focus-visible:border-secondary focus-visible:ring-secondary/20 h-10"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="message" className="text-white/60 text-xs font-label-mono uppercase tracking-wider">
-                      Message
-                    </Label>
-                    <Textarea
-                      id="message"
-                      name="message"
-                      required
-                      rows={5}
-                      placeholder="Hi, I would like to build..."
-                      className="border-white/10 bg-white/5 text-white placeholder:text-white/20 focus-visible:border-secondary focus-visible:ring-secondary/20 min-h-28"
-                    />
-                  </div>
-
-                  {statusMsg && (
-                    <p className={`font-body-md text-sm p-3 rounded-lg ${
-                      statusType === "success" 
-                        ? "bg-secondary/10 border border-secondary/25 text-secondary" 
-                        : "bg-destructive/10 border border-destructive/25 text-destructive"
-                    }`}>
-                      {statusMsg}
-                    </p>
                   )}
-
-                  <Button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="w-full h-10 bg-white text-black hover:bg-white/90 border-transparent font-semibold cursor-pointer active:scale-95 duration-150 transition-all font-label-mono text-label-mono dark:bg-white dark:text-black"
-                  >
-                    {isSubmitting ? "SENDING..." : "SEND MESSAGE"}
-                  </Button>
                 </form>
               </div>
-            </BlurFade>
-          </div>
+            </div>
+          </BlurFade>
+
+          {/* Footer strip — channels + socials + sign-off */}
+          <BlurFade delay={0.2} direction="up" inView>
+            <div className="mt-5 pt-4 border-t border-white/10 flex flex-wrap items-center gap-x-5 gap-y-2 font-label-mono text-label-mono text-white/50">
+              <span className="text-accent select-none">//</span>
+              <span className="text-white/40 uppercase tracking-widest mr-2">else</span>
+              <a
+                href={`mailto:${email}`}
+                className="hover:text-accent transition-colors"
+              >
+                ↗ email
+              </a>
+              {phone && (
+                <a
+                  href={`tel:${phone.replace(/\s+/g, "")}`}
+                  className="hover:text-accent transition-colors"
+                >
+                  ↗ phone
+                </a>
+              )}
+              {whatsapp && (
+                <a
+                  href={`https://wa.me/${formattedWhatsapp}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-accent transition-colors"
+                >
+                  ↗ whatsapp
+                </a>
+              )}
+              {socials.map((s) => (
+                <a
+                  key={s.label}
+                  href={s.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-accent transition-colors"
+                >
+                  ↗ {s.label.toLowerCase()}
+                </a>
+              ))}
+              <span className="ml-auto text-white/30 select-none">
+                cd ~/portfolio · exit 0
+              </span>
+            </div>
+          </BlurFade>
         </div>
       </div>
     </section>
+  );
+}
+
+/**
+ * Single terminal-styled form field. Renders as:
+ *   > label: [ value _caret ]
+ */
+function TerminalField({
+  field,
+  focused,
+  onFocus,
+  onBlur,
+}: {
+  field: {
+    name: string;
+    label: string;
+    type?: string;
+    placeholder: string;
+    multiline?: boolean;
+  };
+  focused: boolean;
+  onFocus: () => void;
+  onBlur: () => void;
+}) {
+  const InputTag = field.multiline ? "textarea" : "input";
+  const inputProps = field.multiline
+    ? { rows: 4 }
+    : { type: field.type || "text" };
+
+  return (
+    <label
+      htmlFor={field.name}
+      className={`group flex items-start gap-2 px-3 py-2 rounded-md border bg-black/40 transition-colors ${
+        focused
+          ? "border-accent/60"
+          : "border-white/10 hover:border-white/25"
+      }`}
+    >
+      <span
+        className={`shrink-0 font-label-mono select-none transition-colors ${
+          focused ? "text-accent" : "text-white/40"
+        }`}
+        aria-hidden="true"
+      >
+        &gt;
+      </span>
+      <span className="font-label-mono text-white/60 shrink-0 select-none">
+        {field.label}:
+      </span>
+      <div className="relative flex-1 min-w-0">
+        <InputTag
+          {...inputProps}
+          id={field.name}
+          name={field.name}
+          required
+          placeholder={field.placeholder}
+          onFocus={onFocus}
+          onBlur={onBlur}
+          className="w-full bg-transparent border-0 outline-none font-label-mono text-sm text-white placeholder:text-white/25 focus:ring-0 focus:outline-none p-0 resize-none caret-accent"
+        />
+      </div>
+      <span
+        className={`font-label-mono select-none transition-opacity duration-150 ${
+          focused ? "text-accent opacity-100 caret-blink" : "text-accent opacity-0"
+        }`}
+        aria-hidden="true"
+      >
+        _
+      </span>
+    </label>
   );
 }

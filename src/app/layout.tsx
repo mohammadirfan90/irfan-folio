@@ -20,23 +20,40 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://your-portfolio.com"),
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/icon.png", type: "image/png", sizes: "any" },
+    ],
+    apple: "/apple-icon.png",
+  },
   title: {
     default: "Mohammad Irfan | Full Stack Developer",
     template: "%s | Mohammad Irfan",
   },
-  description: "Architecting robust digital experiences with a focus on technical precision and editorial-grade user interfaces.",
+  description: "Building software people actually use. Junior full-stack developer working with React, Next.js, TypeScript, Node.js, and Postgres.",
   openGraph: {
     title: "Mohammad Irfan | Full Stack Developer",
-    description: "Architecting robust digital experiences with a focus on technical precision and editorial-grade user interfaces.",
+    description: "Building software people actually use. Junior full-stack developer working with React, Next.js, TypeScript, Node.js, and Postgres.",
     url: "/",
     siteName: "Mohammad Irfan | Full Stack Developer",
     locale: "en_US",
     type: "website",
+    images: [
+      {
+        url: "/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "Mohammad Irfan — Full Stack Developer",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "Mohammad Irfan | Full Stack Developer",
-    description: "Architecting robust digital experiences with a focus on technical precision and editorial-grade user interfaces.",
+    description: "Building software people actually use. Junior full-stack developer working with React, Next.js, TypeScript, Node.js, and Postgres.",
+    images: ["/opengraph-image"],
+    creator: "@mohammadirfan90",
   },
 };
 

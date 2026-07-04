@@ -163,6 +163,100 @@ function parseInlineBold(text: string) {
   });
 }
 
+// Connector phrases that signal a transition from problem to solution
+const SOLUTION_CONNECTORS = [
+  "we resolved",
+  "we solved",
+  "we overcame",
+  "we tackled",
+  "we bypassed",
+  "we addressed",
+  "we mitigated",
+  "we fixed",
+  "we implemented",
+  "we added",
+  "we switched",
+  "we adopted",
+  "we used",
+  "we leveraged",
+  "we architected",
+  "i resolved",
+  "i solved",
+  "i overcame",
+  "i tackled",
+  "i fixed",
+  "i implemented",
+  "by implementing",
+  "by using",
+  "by adopting",
+  "by switching",
+  "by leveraging",
+  "by adding",
+];
+
+interface ChallengePair {
+  problem: string;
+  solution: string | null;
+}
+
+/**
+ * Splits the `challenges` text into problem/solution pairs.
+ * Splits multiple challenges on blank lines, then within each
+ * paragraph looks for a solution connector (e.g. "we resolved").
+ * If no connector is found, the whole paragraph is the problem and
+ * the solution stays null (rendered as a dashed-border placeholder).
+ */
+function getChallengePairs(text: string | null | undefined): ChallengePair[] {
+  if (!text || !text.trim()) return [];
+
+  // 1) Split multiple challenges on blank lines OR on numbered/dashed list markers.
+  const blocks = text
+    .split(/\n\s*\n/)
+    .map((b) => b.trim())
+    .filter(Boolean);
+
+  return blocks.map((block) => {
+    const lower = block.toLowerCase();
+    let splitIdx = -1;
+    for (const connector of SOLUTION_CONNECTORS) {
+      const idx = lower.indexOf(connector);
+      if (idx !== -1 && (splitIdx === -1 || idx < splitIdx)) {
+        splitIdx = idx;
+      }
+    }
+
+    if (splitIdx === -1) {
+      return { problem: block, solution: null };
+    }
+
+    // Walk back to the start of the sentence containing the connector.
+    const beforeText = block.slice(0, splitIdx);
+    const lastSentenceEnd = Math.max(
+      beforeText.lastIndexOf(". "),
+      beforeText.lastIndexOf("? "),
+      beforeText.lastIndexOf("! ")
+    );
+    const problem = beforeText.slice(0, lastSentenceEnd + 1).trim() || block;
+    const solution = block.slice(lastSentenceEnd + 1).trim() || block;
+    return { problem, solution };
+  });
+}
+
+const FALLBACK_CHALLENGES: ChallengePair[] = [
+  {
+    problem: "Initial architecture struggled to handle peak concurrent traffic without dropping requests.",
+    solution: "Migrated critical paths to a horizontally-scalable service with a managed connection pool.",
+  },
+  {
+    problem: "Manual deployment steps introduced inconsistencies across environments.",
+    solution: "Containerized the stack and wired a single-command CI/CD pipeline for all environments.",
+  },
+  {
+    problem: "Database queries degraded as the dataset grew past the first million rows.",
+    solution: "Profiled hot queries, added composite indexes, and refactored the ORM layer for raw SQL on heavy paths.",
+  },
+];
+
 function renderSimpleMarkdown(text: string) {
   if (!text) return null;
   const paragraphs = text.split(/\n\s*\n/);
@@ -192,7 +286,7 @@ function renderSimpleMarkdown(text: string) {
 export function ProjectDetailView({ project }: ProjectDetailViewProps) {
   const [currentIdx, setCurrentIdx] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"overview" | "features" | "future">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "features" | "challenges" | "future">("overview");
 
   const screenshots = project.screenshots || [];
   const technologies = project.technologies || [];
@@ -240,11 +334,16 @@ export function ProjectDetailView({ project }: ProjectDetailViewProps) {
       : "bg-blue-500";
 
   // Tab definitions
-  const tabs = [
-    { id: "overview" as const, label: "Overview" },
-    { id: "features" as const, label: "Features" },
-    { id: "future" as const, label: "Future Improvements" },
+  const tabs: Array<{ id: "overview" | "features" | "challenges" | "future"; label: string }> = [
+    { id: "overview", label: "Overview" },
+    { id: "features", label: "Features" },
+    { id: "challenges", label: "Challenges" },
+    { id: "future", label: "Future" },
   ];
+
+  const challengePairs = getChallengePairs(project.challenges);
+  const challengesToShow =
+    challengePairs.length > 0 ? challengePairs : FALLBACK_CHALLENGES;
 
   return (
     <div className="w-full lg:h-full lg:flex lg:flex-col lg:justify-between lg:gap-6">
@@ -488,6 +587,63 @@ export function ProjectDetailView({ project }: ProjectDetailViewProps) {
                   {activeTab === "overview" ? (
                     <div className="font-body-md select-text px-1">
                       {renderSimpleMarkdown(project.description || "No description overview available.")}
+                    </div>
+                  ) : activeTab === "challenges" ? (
+                    <div className="space-y-4 px-1">
+                      {challengesToShow.map((pair, idx) => (
+                        <motion.div
+                          key={idx}
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: idx * 0.08 }}
+                          className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-3 items-stretch"
+                        >
+                          {/* Problem card */}
+                          <div className="p-3.5 rounded-xl border border-outline-variant/15 bg-red-50/40 dark:bg-red-950/10">
+                            <div className="flex items-center gap-1.5 mb-2">
+                              <span className="font-label-mono text-[10px] uppercase tracking-widest text-accent select-none">//</span>
+                              <span className="font-label-mono text-[10px] uppercase tracking-widest text-on-surface-variant font-semibold">
+                                problem
+                              </span>
+                            </div>
+                            <p className="font-body-md text-sm text-on-surface leading-relaxed">
+                              {pair.problem}
+                            </p>
+                          </div>
+
+                          {/* Connector arrow (desktop only) */}
+                          <div className="hidden md:flex items-center justify-center text-accent font-label-mono text-lg select-none" aria-hidden="true">
+                            →
+                          </div>
+                          {/* Connector arrow (mobile, vertical) */}
+                          <div className="flex md:hidden items-center justify-center text-accent font-label-mono text-lg rotate-90 select-none" aria-hidden="true">
+                            →
+                          </div>
+
+                          {/* Solution card */}
+                          <div
+                            className={`p-3.5 rounded-xl border bg-lime-50/40 dark:bg-lime-950/10 ${
+                              pair.solution
+                                ? "border-accent/30"
+                                : "border-dashed border-outline-variant/40"
+                            }`}
+                          >
+                            <div className="flex items-center gap-1.5 mb-2">
+                              <span className="font-label-mono text-[10px] uppercase tracking-widest text-accent select-none">//</span>
+                              <span className="font-label-mono text-[10px] uppercase tracking-widest text-on-surface-variant font-semibold">
+                                solution
+                              </span>
+                            </div>
+                            <p className="font-body-md text-sm text-on-surface leading-relaxed">
+                              {pair.solution ?? (
+                                <span className="text-on-surface-variant italic">
+                                  Resolution in progress — check back as the project evolves.
+                                </span>
+                              )}
+                            </p>
+                          </div>
+                        </motion.div>
+                      ))}
                     </div>
                   ) : (
                     currentBullets.map((bullet, idx) => (
