@@ -56,6 +56,10 @@ export function ProjectsSection({
         <div className="mb-16">
           <BlurFade delay={0.1} direction="right" inView>
             <div>
+              <span className="font-label-mono text-label-mono text-secondary uppercase tracking-widest mb-4 block font-semibold">
+                <span className="text-accent mr-1.5 select-none">//</span>
+                Selected Work
+              </span>
               <h2 className="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface">
                 Projects
               </h2>
@@ -65,18 +69,22 @@ export function ProjectsSection({
 
         {/* Project Card Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {projects.map((project, index) => (
-            <BlurFade key={project.id} delay={0.1 + index * 0.1} inView>
-              <ProjectCard
-                title={project.title}
-                slug={project.slug}
-                summary={project.summary}
-                category={project.category}
-                imageUrl={project.thumbnail_url || ""}
-                liveUrl={project.live_url || undefined}
-              />
-            </BlurFade>
-          ))}
+          {projects.map((project, index) => {
+            const dir = index % 3 === 0 ? "left" : index % 3 === 1 ? "up" : "right";
+            return (
+              <BlurFade key={project.id} delay={0.1 + index * 0.1} direction={dir} inView>
+                <ProjectCard
+                  title={project.title}
+                  slug={project.slug}
+                  summary={project.summary}
+                  category={project.category}
+                  imageUrl={project.thumbnail_url || ""}
+                  liveUrl={project.live_url || undefined}
+                  technologies={project.technologies ?? []}
+                />
+              </BlurFade>
+            );
+          })}
         </div>
 
         {/* View All Projects Button */}

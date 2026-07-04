@@ -6,12 +6,21 @@ import Link from "next/link";
 export function Navbar() {
   const [activeSection, setActiveSection] = useState("home");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
+  const [scrolled, setScrolled] = useState(false);
 
-  // Monitor scrolling to highlight active section
+  // Monitor scrolling to highlight active section, track progress, and toggle scrolled state
   useEffect(() => {
     const handleScroll = () => {
-      const sections = ["home", "about", "skills", "projects", "services", "contact"];
-      const scrollPosition = window.scrollY + 100; // Offset for navbar height
+      const scrollY = window.scrollY;
+      const docHeight =
+        document.documentElement.scrollHeight - window.innerHeight;
+      const progress = docHeight > 0 ? Math.min(scrollY / docHeight, 1) : 0;
+      setScrollProgress(progress);
+      setScrolled(scrollY > 80);
+
+      const sections = ["home", "about", "skills", "projects", "experience", "contact"];
+      const scrollPosition = scrollY + 100; // Offset for navbar height
 
       for (const section of sections) {
         const el = document.getElementById(section);
@@ -26,7 +35,8 @@ export function Navbar() {
       }
     };
 
-    window.addEventListener("scroll", handleScroll);
+    handleScroll(); // initialize on mount
+    window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
@@ -35,12 +45,29 @@ export function Navbar() {
     { label: "About", href: "#about", id: "about" },
     { label: "Skills", href: "#skills", id: "skills" },
     { label: "Projects", href: "#projects", id: "projects" },
-    { label: "Services", href: "#services", id: "services" },
+    { label: "Experience", href: "#experience", id: "experience" },
     { label: "Contact", href: "#contact", id: "contact" },
   ];
 
   return (
-    <nav className="fixed top-0 w-full z-50 bg-background/80 glass-nav border-b border-outline-variant/20 shadow-sm">
+    <nav
+      className={`fixed top-0 w-full z-50 glass-nav border-b transition-all duration-300 ${
+        scrolled
+          ? "bg-background/90 border-outline-variant/30 shadow-md"
+          : "bg-background/60 border-outline-variant/10 shadow-none"
+      }`}
+    >
+      {/* Scroll progress bar (lime) */}
+      <div
+        className="absolute bottom-0 left-0 h-[2px] bg-accent transition-opacity duration-300"
+        style={{
+          width: `${scrollProgress * 100}%`,
+          opacity: scrolled ? 1 : 0,
+          boxShadow: "0 0 8px rgba(163, 230, 53, 0.6)",
+        }}
+        aria-hidden="true"
+      />
+
       <div className="flex justify-between items-center max-w-container-max mx-auto px-margin-mobile md:px-gutter h-16">
         <Link
           href="/"
@@ -62,12 +89,20 @@ export function Navbar() {
                 <a
                   key={link.id}
                   href={link.href}
-                  className={`font-label-mono text-label-mono transition-colors pb-1 ${
+                  className={`font-label-mono text-label-mono transition-colors pb-1 flex items-center gap-1.5 ${
                     isActive
-                      ? "text-primary border-b-2 border-secondary"
+                      ? "text-primary"
                       : "text-on-surface-variant hover:text-primary"
                   }`}
                 >
+                  {isActive && (
+                    <span
+                      className="text-accent caret-blink select-none"
+                      aria-hidden="true"
+                    >
+                      ▌
+                    </span>
+                  )}
                   {link.label}
                 </a>
               );

@@ -88,6 +88,7 @@ export function ContactSection({
             <BlurFade delay={0.1} direction="up" inView>
               <div>
                 <span className="font-label-mono text-label-mono text-secondary uppercase tracking-widest mb-4 block font-semibold">
+                  <span className="text-accent mr-1.5 select-none">//</span>
                   {subtitle}
                 </span>
                 <h2 className="font-display text-4xl md:text-5xl font-bold tracking-tight text-white mb-6 leading-[1.1]">
@@ -96,7 +97,7 @@ export function ContactSection({
               </div>
             </BlurFade>
 
-            <BlurFade delay={0.2} direction="up" inView>
+            <BlurFade delay={0.2} direction="right" inView>
               <div className="space-y-6 pt-6 border-t border-white/10">
                 {/* Email Channel */}
                 <div className="flex items-start gap-4">
@@ -148,7 +149,7 @@ export function ContactSection({
             </BlurFade>
 
             {/* Social Links */}
-            <BlurFade delay={0.3} direction="up" inView>
+            <BlurFade delay={0.3} direction="right" inView>
               <div className="flex flex-wrap items-center gap-x-6 gap-y-3 pt-8 border-t border-white/10 w-full max-w-sm">
                 {socials.map((link) => (
                   <a
@@ -167,7 +168,7 @@ export function ContactSection({
 
           {/* Right Column: Contact Form */}
           <div className="lg:col-span-7">
-            <BlurFade delay={0.2} direction="up" inView>
+            <BlurFade delay={0.2} direction="left" inView>
               <div className="bg-white/5 border border-white/10 p-8 rounded-2xl shadow-xl space-y-6">
                 <h3 className="font-headline-md text-headline-md text-white font-semibold">
                   Send a Message

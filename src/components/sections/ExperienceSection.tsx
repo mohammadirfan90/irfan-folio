@@ -40,39 +40,40 @@ export function ExperienceSection({
     },
   ],
 }: ExperienceSectionProps) {
-  // Combine and structure the items into a single timeline as per the static HTML layout.
-  // In the mock, experience items are followed by education items.
-  const timelineItems = [
-    ...experiences.map((exp) => ({
+  // Build experience and education groups separately, each sorted by display_order.
+  const experienceItems = [...experiences]
+    .sort((a, b) => a.display_order - b.display_order)
+    .map((exp) => ({
       id: `exp-${exp.id}`,
       duration: exp.duration,
       title: exp.role,
       subtitle: exp.company,
       description: exp.description,
-      display_order: exp.display_order,
-      type: "experience" as const,
-    })),
-    ...educations.map((edu) => ({
+      kind: "experience" as const,
+    }));
+
+  const educationItems = [...educations]
+    .sort((a, b) => a.display_order - b.display_order)
+    .map((edu) => ({
       id: `edu-${edu.id}`,
       duration: edu.duration,
       title: edu.degree,
       subtitle: edu.school,
       description: edu.description || "",
-      display_order: edu.display_order + 100, // offset to place after experience
-      type: "education" as const,
-    })),
-  ].sort((a, b) => a.display_order - b.display_order);
+      kind: "education" as const,
+    }));
 
   return (
     <section
       className="py-section-gap-mobile md:py-section-gap-desktop"
-      id="services"
+      id="experience"
     >
       <div className="max-w-container-max mx-auto px-margin-mobile md:px-gutter">
         <div className="max-w-3xl">
           {/* Header */}
-          <BlurFade delay={0.1} inView>
+          <BlurFade delay={0.1} direction="left" inView>
             <span className="font-label-mono text-label-mono text-secondary uppercase tracking-widest mb-4 block">
+              <span className="text-accent mr-1.5 select-none">//</span>
               Chronicle
             </span>
             <h2 className="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface mb-12">
@@ -80,20 +81,53 @@ export function ExperienceSection({
             </h2>
           </BlurFade>
 
-          {/* Timeline List */}
+          {/* Experience group */}
           <div className="space-y-12">
-            {timelineItems.map((item, index) => (
-              <BlurFade key={item.id} delay={0.1 + index * 0.08} inView>
+            {experienceItems.map((item, index) => (
+              <BlurFade key={item.id} delay={0.1 + index * 0.08} direction="right" inView>
                 <TimelineItem
                   duration={item.duration}
                   title={item.title}
                   subtitle={item.subtitle}
                   description={item.description}
-                  isLast={index === timelineItems.length - 1}
+                  kind={item.kind}
+                  isLast={
+                    index === experienceItems.length - 1 &&
+                    educationItems.length === 0
+                  }
                 />
               </BlurFade>
             ))}
           </div>
+
+          {/* Education group divider */}
+          {educationItems.length > 0 && (
+            <>
+              <BlurFade delay={0.2} direction="up" inView>
+                <div className="flex items-center gap-3 mt-16 mb-10">
+                  <span className="font-label-mono text-label-mono text-accent uppercase tracking-widest text-xs select-none">
+                    // education
+                  </span>
+                  <span className="flex-1 h-px bg-outline-variant/30" aria-hidden="true" />
+                </div>
+              </BlurFade>
+
+              <div className="space-y-12">
+                {educationItems.map((item, index) => (
+                  <BlurFade key={item.id} delay={0.1 + index * 0.08} direction="right" inView>
+                    <TimelineItem
+                      duration={item.duration}
+                      title={item.title}
+                      subtitle={item.subtitle}
+                      description={item.description}
+                      kind={item.kind}
+                      isLast={index === educationItems.length - 1}
+                    />
+                  </BlurFade>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </div>
     </section>

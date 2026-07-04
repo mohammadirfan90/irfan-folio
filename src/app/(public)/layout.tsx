@@ -4,6 +4,7 @@ import React from "react";
 import { usePathname } from "next/navigation";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
+import { ScrollToTop } from "@/components/layout/ScrollToTop";
 
 export default function PublicLayout({
   children,
@@ -17,6 +18,7 @@ export default function PublicLayout({
     <>
       <Navbar />
       <main className="flex-grow">{children}</main>
+      {!isProjectDetail && <ScrollToTop />}
       {!isProjectDetail && <Footer />}
     </>
   );

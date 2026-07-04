@@ -6,6 +6,7 @@ import { AvailabilityBadge } from "../portfolio/AvailabilityBadge";
 import { BlurFade } from "@/components/ui/blur-fade";
 import { Particles } from "@/components/ui/particles";
 import { ShinyButton } from "@/components/ui/shiny-button";
+import { TypedText } from "@/components/ui/typed-text";
 import { ArrowUpRight } from "lucide-react";
 
 interface HeroSectionProps {
@@ -85,8 +86,8 @@ export function HeroSection({
           </BlurFade>
 
           <BlurFade delay={0.28} direction="up" inView>
-            <h2 className="text-xl md:text-2xl font-label-mono text-label-mono text-on-surface-variant mb-6 uppercase tracking-wider">
-              {designation.replace(/\.$/, "")}
+            <h2 className="text-xl md:text-2xl mb-6">
+              <TypedText text={designation.replace(/\.$/, "")} />
             </h2>
           </BlurFade>
 
@@ -97,19 +98,51 @@ export function HeroSection({
           </BlurFade>
 
           <BlurFade delay={0.42} direction="up" inView>
-            <div className="flex flex-wrap gap-4 items-center">
-              <a href="#contact" className="inline-block">
+            <div className="flex flex-wrap gap-6 items-center">
+              <a
+                href="#contact"
+                className="group relative inline-block"
+              >
+                <span
+                  aria-hidden="true"
+                  className="absolute -left-4 top-1/2 -translate-y-1/2 text-accent opacity-0 -translate-x-1 transition-all duration-200 group-hover:opacity-100 group-hover:translate-x-0 font-label-mono"
+                >
+                  [
+                </span>
                 <ShinyButton className="bg-black text-white hover:bg-black/90 border-transparent rounded-lg font-semibold px-8 py-4 shadow-lg active:scale-95 duration-150 transition-all font-label-mono text-label-mono h-auto">
                   Get in touch
                 </ShinyButton>
+                <span
+                  aria-hidden="true"
+                  className="absolute -right-4 top-1/2 -translate-y-1/2 text-accent opacity-0 translate-x-1 transition-all duration-200 group-hover:opacity-100 group-hover:translate-x-0 font-label-mono"
+                >
+                  ]
+                </span>
               </a>
-              <a href={resumeUrl || "#"} target="_blank" rel="noopener noreferrer" className="inline-block">
+              <a
+                href={resumeUrl || "#"}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group relative inline-block"
+              >
+                <span
+                  aria-hidden="true"
+                  className="absolute -left-4 top-1/2 -translate-y-1/2 text-accent opacity-0 -translate-x-1 transition-all duration-200 group-hover:opacity-100 group-hover:translate-x-0 font-label-mono"
+                >
+                  [
+                </span>
                 <ShinyButton className="bg-surface-container-low/70 text-on-surface hover:bg-surface-container-low hover:text-secondary border-outline-variant/30 rounded-lg font-semibold px-8 py-4 shadow-md active:scale-95 duration-150 transition-all font-label-mono text-label-mono h-auto">
                   <span className="flex items-center gap-2 justify-center">
                     Resume
                     <ArrowUpRight className="w-4 h-4 text-secondary" />
                   </span>
                 </ShinyButton>
+                <span
+                  aria-hidden="true"
+                  className="absolute -right-4 top-1/2 -translate-y-1/2 text-accent opacity-0 translate-x-1 transition-all duration-200 group-hover:opacity-100 group-hover:translate-x-0 font-label-mono"
+                >
+                  ]
+                </span>
               </a>
             </div>
           </BlurFade>

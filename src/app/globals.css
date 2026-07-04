@@ -11,6 +11,8 @@
   --color-on-primary: #ffffff;
   --color-secondary: #2563eb;
   --color-secondary-container: #3b82f6;
+  --color-accent: #a3e635;
+  --color-accent-foreground: #111827;
   --color-outline-variant: #e5e7eb;
   --color-surface-container-low: #f3f4f6;
   --color-surface-container-lowest: #ffffff;
@@ -48,6 +50,10 @@
     transform: translateY(-8px);
     box-shadow: 0 12px 48px rgba(0,0,0,0.08);
   }
+}
+
+@utility caret-blink {
+  animation: var(--animate-caret-blink);
 }
 
 /* Fluid Typography Utilities */
@@ -161,6 +167,7 @@
   --radius-4xl: calc(var(--radius) + 16px);
   --animate-marquee: marquee var(--duration) infinite linear;
   --animate-marquee-vertical: marquee-vertical var(--duration) linear infinite;
+  --animate-caret-blink: caret-blink 1.05s steps(2, start) infinite;
   @keyframes marquee {
     from { transform: translateX(0); }
     to { transform: translateX(calc(-100% - var(--gap))); }
@@ -168,6 +175,9 @@
   @keyframes marquee-vertical {
     from { transform: translateY(0); }
     to { transform: translateY(calc(-100% - var(--gap))); }
+  }
+  @keyframes caret-blink {
+    to { visibility: hidden; }
   }
 }
 
@@ -184,7 +194,7 @@
   --secondary-foreground: #ffffff;
   --muted: #f3f4f6;
   --muted-foreground: #4b5563;
-  --accent: #f3f4f6;
+  --accent: #a3e635;
   --accent-foreground: #111827;
   --destructive: #ef4444;
   --border: #e5e7eb;
@@ -261,4 +271,11 @@
 
 @utility text-balance {
   text-wrap: balance;
+}
+
+/* Section anchor offset so jumps land below the fixed navbar */
+@layer base {
+  section[id] {
+    scroll-margin-top: 5rem;
+  }
 }

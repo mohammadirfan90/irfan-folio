@@ -70,6 +70,7 @@ export default async function Home() {
         } : undefined}
       />
       <AboutSection
+        summary={profile?.bio_description ?? undefined}
         location={profile?.location ?? undefined}
         focusArea={profile?.focus_area ?? undefined}
       />

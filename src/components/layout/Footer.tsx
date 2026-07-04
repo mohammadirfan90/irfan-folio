@@ -17,7 +17,7 @@ export function Footer({
     { label: "Read.cv", href: "#" },
     { label: "Email", href: "#" },
   ],
-  copyrightText = `© ${new Date().getFullYear()} Engineering Portfolio. Built with Quiet Confidence.`,
+  copyrightText = `© ${new Date().getFullYear()} Engineering Portfolio. build: stable.`,
 }: FooterProps) {
   return (
     <footer className="w-full py-section-gap-mobile md:py-16 bg-surface border-t border-outline-variant/30">
@@ -29,8 +29,11 @@ export function Footer({
               | Full Stack Developer
             </span>
           </span>
-          <p className="font-label-mono text-label-mono text-on-surface-variant text-center md:text-left">
+          <p className="font-label-mono text-label-mono text-on-surface-variant text-center md:text-left flex items-center gap-1.5">
             {copyrightText}
+            <span className="text-accent caret-blink select-none" aria-hidden="true">
+              ▌
+            </span>
           </p>
         </div>
         <div className="flex flex-wrap justify-center gap-8">

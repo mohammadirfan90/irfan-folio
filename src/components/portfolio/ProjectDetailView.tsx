@@ -1,16 +1,15 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { LocalProject } from "@/app/(public)/projects/[slug]/page";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  ExternalLink, 
-  Check, 
-  Maximize2, 
+import {
+  ChevronLeft,
+  ChevronRight,
+  ExternalLink,
+  Maximize2,
   X,
   User,
   Users,
@@ -198,6 +197,22 @@ export function ProjectDetailView({ project }: ProjectDetailViewProps) {
   const screenshots = project.screenshots || [];
   const technologies = project.technologies || [];
 
+  // Close lightbox on Escape, navigate with arrow keys
+  useEffect(() => {
+    if (!lightboxOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setLightboxOpen(false);
+      } else if (e.key === "ArrowLeft" && screenshots.length > 1) {
+        setCurrentIdx((prev) => (prev === 0 ? screenshots.length - 1 : prev - 1));
+      } else if (e.key === "ArrowRight" && screenshots.length > 1) {
+        setCurrentIdx((prev) => (prev === screenshots.length - 1 ? 0 : prev + 1));
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [lightboxOpen, screenshots.length]);
+
   const handlePrev = (e: React.MouseEvent) => {
     e.stopPropagation();
     setCurrentIdx((prev) => (prev === 0 ? screenshots.length - 1 : prev - 1));
@@ -237,6 +252,23 @@ export function ProjectDetailView({ project }: ProjectDetailViewProps) {
       {/* 1. Header Section */}
       <header className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 border-b border-outline-variant/15 pb-4 flex-shrink-0">
         <div className="space-y-1.5 max-w-3xl">
+          {/* Meta strip: terminal path + category + status */}
+          <div className="flex flex-wrap items-center gap-3 mb-2 font-label-mono text-[11px] uppercase tracking-wider">
+            <span className="text-accent select-none">
+              ~/projects/{project.slug}/
+            </span>
+            {project.category && (
+              <span className="px-2 py-0.5 rounded-md bg-white border border-outline-variant/20 text-primary">
+                {project.category}
+              </span>
+            )}
+            {project.status && (
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-white border border-outline-variant/20 text-primary">
+                <span className={`w-1.5 h-1.5 rounded-full ${statusColor} animate-pulse shrink-0`} aria-hidden="true" />
+                {project.status}
+              </span>
+            )}
+          </div>
           <h1 className="font-display text-3xl md:text-4xl text-primary font-bold tracking-tight">
             {project.title}
           </h1>
@@ -349,6 +381,7 @@ export function ProjectDetailView({ project }: ProjectDetailViewProps) {
           {/* METADATA GRID */}
           <div className="flex-shrink-0 p-4 border border-outline-variant/15 rounded-xl bg-surface-container-low/30">
             <h3 className="font-label-mono text-xs text-on-surface-variant uppercase font-bold tracking-widest mb-3 block">
+              <span className="text-accent mr-1.5 select-none">//</span>
               Case Details
             </h3>
             <div className="grid grid-cols-2 gap-4">
@@ -465,9 +498,12 @@ export function ProjectDetailView({ project }: ProjectDetailViewProps) {
                         transition={{ delay: idx * 0.08 }}
                         className="flex items-start gap-3 p-3 rounded-xl border border-outline-variant/10 bg-surface-container-low/20"
                       >
-                        <div className="w-5 h-5 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0 mt-0.5 border border-emerald-500/20">
-                          <Check className="w-3 h-3 text-emerald-600" />
-                        </div>
+                        <span
+                          className="text-accent font-label-mono shrink-0 mt-1 select-none"
+                          aria-hidden="true"
+                        >
+                          →
+                        </span>
                         <span className="font-body-md text-sm md:text-base text-on-surface-variant leading-relaxed">
                           {bullet}
                         </span>
@@ -483,6 +519,7 @@ export function ProjectDetailView({ project }: ProjectDetailViewProps) {
           {/* TECH STACK chips */}
           <div className="flex-shrink-0 p-4 border border-outline-variant/15 rounded-xl bg-surface-container-low/30 flex flex-col gap-3">
             <h3 className="font-label-mono text-xs text-on-surface-variant uppercase font-bold tracking-widest block leading-tight">
+              <span className="text-accent mr-1.5 select-none">//</span>
               Tech Stack
             </h3>
             <div className="flex flex-wrap gap-2 max-h-[140px] overflow-y-auto pr-1 scrollbar-none">
@@ -491,6 +528,7 @@ export function ProjectDetailView({ project }: ProjectDetailViewProps) {
                   key={tech}
                   className="flex items-center gap-2 py-1.5 px-3 rounded-lg border border-outline-variant/20 bg-background shadow-xs hover:border-outline-variant/40 hover:scale-[1.02] transition-all cursor-default"
                 >
+                  <span className="w-1.5 h-1.5 rounded-full bg-accent shrink-0" aria-hidden="true" />
                   <TechLogo name={tech} />
                   <span className="font-label-mono text-sm text-primary font-semibold">
                     {tech}
@@ -508,15 +546,34 @@ export function ProjectDetailView({ project }: ProjectDetailViewProps) {
       {lightboxOpen && screenshots.length > 0 && (
         <div
           onClick={() => setLightboxOpen(false)}
-          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 cursor-zoom-out animation-fade-in"
+          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex flex-col items-center justify-center p-4 cursor-zoom-out animation-fade-in"
         >
+          {/* Terminal breadcrumb bar */}
+          <div
+            className="absolute top-0 left-0 right-0 px-4 sm:px-6 py-3 flex items-center justify-between gap-3 font-label-mono text-[11px] uppercase tracking-wider select-none"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-2 text-accent truncate">
+              <span className="material-symbols-outlined text-[14px]" aria-hidden="true">
+                terminal
+              </span>
+              <span className="truncate">
+                ~/projects/{project.slug}/screenshot-{String(currentIdx + 1).padStart(2, "0")}.png
+              </span>
+            </div>
+            <div className="hidden sm:flex items-center gap-3 text-white/40 shrink-0">
+              <span>←/→ navigate</span>
+              <span>esc close</span>
+            </div>
+          </div>
+
           <div className="relative max-w-5xl max-h-[90vh] w-full h-full flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
             <img
               src={screenshots[currentIdx]}
               alt="Screenshot full size"
               className="max-w-full max-h-full object-contain rounded-lg"
             />
-            
+
             <button
               onClick={() => setLightboxOpen(false)}
               className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition-colors cursor-pointer"
@@ -524,7 +581,7 @@ export function ProjectDetailView({ project }: ProjectDetailViewProps) {
             >
               <X className="w-5 h-5" />
             </button>
-            
+
             {screenshots.length > 1 && (
               <>
                 <button
