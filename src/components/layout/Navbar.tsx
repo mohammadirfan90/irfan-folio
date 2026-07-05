@@ -19,7 +19,7 @@ export function Navbar() {
       setScrollProgress(progress);
       setScrolled(scrollY > 80);
 
-      const sections = ["home", "about", "skills", "projects", "experience", "contact"];
+      const sections = ["home", "about", "skills", "projects", "education", "contact"];
       const scrollPosition = scrollY + 100; // Offset for navbar height
 
       for (const section of sections) {
@@ -45,7 +45,7 @@ export function Navbar() {
     { label: "About", href: "#about", id: "about" },
     { label: "Skills", href: "#skills", id: "skills" },
     { label: "Projects", href: "#projects", id: "projects" },
-    { label: "Experience", href: "#experience", id: "experience" },
+    { label: "Education", href: "#education", id: "education" },
     { label: "Contact", href: "#contact", id: "contact" },
   ];
 

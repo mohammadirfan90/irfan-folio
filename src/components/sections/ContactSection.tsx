@@ -151,6 +151,15 @@ export function ContactSection({
                 <span className="text-white/40 group-hover:text-accent">↗</span>
                 <span>email</span>
               </a>
+              {phone && (
+                <a
+                  href={`tel:${phone.replace(/\s+/g, "")}`}
+                  className="group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-white/10 bg-white/[0.03] hover:border-accent/60 hover:bg-accent/5 font-label-mono text-label-mono text-white/70 hover:text-accent transition-colors"
+                >
+                  <span className="text-white/40 group-hover:text-accent">↗</span>
+                  <span>phone</span>
+                </a>
+              )}
               {whatsapp && (
                 <a
                   href={`https://wa.me/${formattedWhatsapp}`}

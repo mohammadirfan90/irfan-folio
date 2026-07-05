@@ -214,6 +214,36 @@ export function AboutForm({ profile, settings }: AboutFormProps) {
             </div>
 
             <div className="space-y-2">
+              <Label htmlFor="contact_phone" className="block text-sm font-semibold text-neutral-500 uppercase tracking-wider mb-2">
+                Contact Phone Number <span className="text-neutral-400 normal-case font-normal">(optional)</span>
+              </Label>
+              <Input
+                id="contact_phone"
+                name="contact_phone"
+                type="tel"
+                defaultValue={settings?.contact_phone || ""}
+                placeholder="+1 (555) 019-2834"
+                className="h-9.5 text-sm"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="contact_whatsapp" className="block text-sm font-semibold text-neutral-500 uppercase tracking-wider mb-2">
+                WhatsApp Number <span className="text-neutral-400 normal-case font-normal">(optional)</span>
+              </Label>
+              <Input
+                id="contact_whatsapp"
+                name="contact_whatsapp"
+                type="tel"
+                defaultValue={settings?.contact_whatsapp || ""}
+                placeholder="+15550192834"
+                className="h-9.5 text-sm"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
               <Label htmlFor="is_available_for_hire" className="block text-sm font-semibold text-neutral-500 uppercase tracking-wider mb-2">
                 Hiring Availability
               </Label>

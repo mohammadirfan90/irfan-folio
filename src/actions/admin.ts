@@ -290,6 +290,8 @@ export async function updateSiteSettings(formData: FormData) {
   const is_available_for_hire = formData.get("is_available_for_hire") === "true";
   const availability_message = formData.get("availability_message") as string;
   const contact_email = formData.get("contact_email") as string;
+  const contact_phone = (formData.get("contact_phone") as string) || null;
+  const contact_whatsapp = (formData.get("contact_whatsapp") as string) || null;
 
   if (!id || id === "") {
     // Look up the first existing site settings row to avoid duplicates
@@ -308,6 +310,8 @@ export async function updateSiteSettings(formData: FormData) {
     is_available_for_hire,
     availability_message,
     contact_email,
+    contact_phone,
+    contact_whatsapp,
     updated_at: new Date().toISOString(),
   };
   if (id && id !== "") payload.id = id;

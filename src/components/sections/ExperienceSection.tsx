@@ -11,24 +11,7 @@ interface ExperienceSectionProps {
 }
 
 export function ExperienceSection({
-  experiences = [
-    {
-      id: "1",
-      role: "Lead Frontend Engineer",
-      company: "TechScale Innovations",
-      duration: "2022 — PRES",
-      description: "Pioneering the migration to a micro-frontend architecture, reducing bundle sizes by 40% and improving lighthouse scores across 5 core products.",
-      display_order: 1,
-    },
-    {
-      id: "2",
-      role: "Full-stack Developer",
-      company: "DataStream Core",
-      duration: "2020 — 2022",
-      description: "Developed real-time data visualization dashboards for enterprise clients using React, D3.js, and specialized WebGL shaders.",
-      display_order: 2,
-    },
-  ],
+  experiences = [],
   educations = [
     {
       id: "1",
@@ -63,10 +46,13 @@ export function ExperienceSection({
       kind: "education" as const,
     }));
 
+  const showExperience = experienceItems.length > 0;
+  const showEducation = educationItems.length > 0;
+
   return (
     <section
       className="py-section-gap-mobile md:py-section-gap-desktop"
-      id="experience"
+      id="education"
     >
       <div className="max-w-container-max mx-auto px-margin-mobile md:px-gutter">
         <div className="max-w-3xl">
@@ -74,59 +60,61 @@ export function ExperienceSection({
           <BlurFade delay={0.1} direction="left" inView>
             <span className="font-label-mono text-label-mono text-secondary uppercase tracking-widest mb-4 block">
               <span className="text-accent mr-1.5 select-none">//</span>
-              Chronicle
+              Background
             </span>
             <h2 className="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface mb-12">
-              Experience &amp; Education
+              Education
             </h2>
           </BlurFade>
 
-          {/* Experience group */}
-          <div className="space-y-12">
-            {experienceItems.map((item, index) => (
-              <BlurFade key={item.id} delay={0.1 + index * 0.08} direction="right" inView>
-                <TimelineItem
-                  duration={item.duration}
-                  title={item.title}
-                  subtitle={item.subtitle}
-                  description={item.description}
-                  kind={item.kind}
-                  isLast={
-                    index === experienceItems.length - 1 &&
-                    educationItems.length === 0
-                  }
-                />
-              </BlurFade>
-            ))}
-          </div>
+          {/* Experience group (only rendered when there are entries) */}
+          {showExperience && (
+            <div className="space-y-12">
+              {experienceItems.map((item, index) => (
+                <BlurFade key={item.id} delay={0.1 + index * 0.08} direction="right" inView>
+                  <TimelineItem
+                    duration={item.duration}
+                    title={item.title}
+                    subtitle={item.subtitle}
+                    description={item.description}
+                    kind={item.kind}
+                    isLast={
+                      index === experienceItems.length - 1 && !showEducation
+                    }
+                  />
+                </BlurFade>
+              ))}
+            </div>
+          )}
 
-          {/* Education group divider */}
-          {educationItems.length > 0 && (
-            <>
-              <BlurFade delay={0.2} direction="up" inView>
-                <div className="flex items-center gap-3 mt-16 mb-10">
-                  <span className="font-label-mono text-label-mono text-accent uppercase tracking-widest text-xs select-none">
-                    // education
-                  </span>
-                  <span className="flex-1 h-px bg-outline-variant/30" aria-hidden="true" />
-                </div>
-              </BlurFade>
-
-              <div className="space-y-12">
-                {educationItems.map((item, index) => (
-                  <BlurFade key={item.id} delay={0.1 + index * 0.08} direction="right" inView>
-                    <TimelineItem
-                      duration={item.duration}
-                      title={item.title}
-                      subtitle={item.subtitle}
-                      description={item.description}
-                      kind={item.kind}
-                      isLast={index === educationItems.length - 1}
-                    />
-                  </BlurFade>
-                ))}
+          {/* Education group divider (only when both groups exist) */}
+          {showExperience && showEducation && (
+            <BlurFade delay={0.2} direction="up" inView>
+              <div className="flex items-center gap-3 mt-16 mb-10">
+                <span className="font-label-mono text-label-mono text-accent uppercase tracking-widest text-xs select-none">
+                  // education
+                </span>
+                <span className="flex-1 h-px bg-outline-variant/30" aria-hidden="true" />
               </div>
-            </>
+            </BlurFade>
+          )}
+
+          {/* Education group */}
+          {showEducation && (
+            <div className="space-y-12">
+              {educationItems.map((item, index) => (
+                <BlurFade key={item.id} delay={0.1 + index * 0.08} direction="right" inView>
+                  <TimelineItem
+                    duration={item.duration}
+                    title={item.title}
+                    subtitle={item.subtitle}
+                    description={item.description}
+                    kind={item.kind}
+                    isLast={index === educationItems.length - 1}
+                  />
+                </BlurFade>
+              ))}
+            </div>
           )}
         </div>
       </div>

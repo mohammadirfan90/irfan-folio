@@ -86,6 +86,8 @@ export default async function Home() {
       />
       <ContactSection
         email={settings?.contact_email ?? undefined}
+        phone={settings?.contact_phone ?? undefined}
+        whatsapp={settings?.contact_whatsapp ?? undefined}
         socials={socialLinks && socialLinks.length > 0 ? socialLinks.map(s => ({
           label: s.platform,
           href: s.url

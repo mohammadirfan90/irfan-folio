@@ -90,6 +90,8 @@ export interface SiteSettings {
   is_available_for_hire: boolean;
   availability_message: string;
   contact_email: string;
+  contact_phone?: string;
+  contact_whatsapp?: string;
   updated_at?: string;
 }
 
