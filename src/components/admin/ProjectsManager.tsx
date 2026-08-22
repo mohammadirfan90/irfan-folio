@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { createClient } from "@/lib/supabase/client";
+import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 import { 
   Search, 
   Plus, 
@@ -29,6 +30,7 @@ interface ProjectsManagerProps {
 function ProjectsManagerContent({ initialProjects }: ProjectsManagerProps) {
   const [projects, setProjects] = useState<Project[]>(initialProjects);
   const [editingProject, setEditingProject] = useState<Partial<Project> | null>(null);
+  const [markdownContent, setMarkdownContent] = useState<string>("");
   const [isSaving, setIsSaving] = useState(false);
   const [msg, setMsg] = useState("");
   const [thumbnailUrl, setThumbnailUrl] = useState("");
@@ -48,6 +50,7 @@ function ProjectsManagerContent({ initialProjects }: ProjectsManagerProps) {
       const proj = projects.find((p) => p.id === editId);
       if (proj) {
         setEditingProject(proj);
+        setMarkdownContent(proj.description || "");
         setThumbnailUrl(proj.thumbnail_url || "");
         fetchProjectImages(proj.id);
       }
@@ -64,11 +67,13 @@ function ProjectsManagerContent({ initialProjects }: ProjectsManagerProps) {
         published: false,
         thumbnail_url: "",
       });
+      setMarkdownContent("");
       setThumbnailUrl("");
       setGalleryUrls([]);
       setMsg("");
     } else {
       setEditingProject(null);
+      setMarkdownContent("");
     }
   }, [searchParams, projects]);
 
@@ -91,6 +96,7 @@ function ProjectsManagerContent({ initialProjects }: ProjectsManagerProps) {
   const handleEditClick = (project: Project) => {
     window.history.pushState(null, "", `/admin/projects?edit=${project.id}`);
     setEditingProject(project);
+    setMarkdownContent(project.description || "");
     setThumbnailUrl(project.thumbnail_url || "");
     setGalleryUrls([]);
     setMsg("");
@@ -111,6 +117,7 @@ function ProjectsManagerContent({ initialProjects }: ProjectsManagerProps) {
       published: false,
       thumbnail_url: "",
     });
+    setMarkdownContent("");
     setThumbnailUrl("");
     setGalleryUrls([]);
     setMsg("");
@@ -119,6 +126,7 @@ function ProjectsManagerContent({ initialProjects }: ProjectsManagerProps) {
   const handleCancelClick = () => {
     window.history.pushState(null, "", "/admin/projects");
     setEditingProject(null);
+    setMarkdownContent("");
     setMsg("");
   };
 
@@ -336,7 +344,7 @@ function ProjectsManagerContent({ initialProjects }: ProjectsManagerProps) {
       ) : (
         
         /* FORM COMPACT EDITOR VIEW */
-        <div className="max-w-2xl mx-auto">
+        <div className="max-w-5xl mx-auto">
           <form onSubmit={handleSubmit} className="space-y-6">
             
             {/* Card 1: General Info */}
@@ -403,17 +411,22 @@ function ProjectsManagerContent({ initialProjects }: ProjectsManagerProps) {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="description" className="block text-sm font-semibold text-neutral-500 uppercase tracking-wider mb-2">
-                  Description / Overview
-                </Label>
-                <Textarea
-                  id="description"
-                  name="description"
-                  rows={4}
-                  defaultValue={editingProject.description || ""}
-                  placeholder="Briefly explain the project concept..."
-                  className="text-sm min-h-[90px]"
+              {/* Case Study Deep-Dive Markdown Editor */}
+              <div className="space-y-2 pt-2">
+                <div className="flex items-center justify-between">
+                  <Label className="block text-sm font-semibold text-neutral-500 uppercase tracking-wider">
+                    Full Case Study (Markdown + Mermaid)
+                  </Label>
+                  <span className="text-xs text-neutral-400 font-mono">
+                    Supports GFM, Tables &amp; ```mermaid
+                  </span>
+                </div>
+                <input type="hidden" name="description" value={markdownContent} />
+                <MarkdownEditor
+                  value={markdownContent}
+                  onChange={setMarkdownContent}
+                  minHeight="380px"
+                  placeholder="Write your case study in Markdown... Include ## headings, tables, and ```mermaid architecture charts."
                 />
               </div>
 

@@ -4,10 +4,9 @@ import Link from "next/link";
 import { MOCK_PROJECTS, ExtendedProject } from "@/constants/projects";
 import { Project } from "@/types";
 import { createClient } from "@/lib/supabase/client";
-
 import type { Metadata } from "next";
-
 import { ProjectDetailView } from "@/components/portfolio/ProjectDetailView";
+import { ArrowLeft } from "lucide-react";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -15,6 +14,14 @@ interface PageProps {
 
 export interface LocalProject extends ExtendedProject {
   key_features?: string;
+}
+
+export interface AdjacentProject {
+  title: string;
+  slug: string;
+  summary: string;
+  category?: string;
+  thumbnail_url?: string;
 }
 
 async function getProject(slug: string): Promise<LocalProject | null> {
@@ -91,6 +98,54 @@ async function getProject(slug: string): Promise<LocalProject | null> {
   return null;
 }
 
+async function getAdjacentProjects(currentSlug: string): Promise<{ prev: AdjacentProject | null; next: AdjacentProject | null }> {
+  try {
+    const supabase = createClient();
+    const { data: projects } = await supabase
+      .from("projects")
+      .select("title, slug, summary, category, thumbnail_url")
+      .eq("published", true)
+      .order("created_at", { ascending: false });
+
+    if (projects && projects.length > 1) {
+      const idx = projects.findIndex((p) => p.slug === currentSlug);
+      if (idx !== -1) {
+        const prev = idx > 0 ? projects[idx - 1] : projects[projects.length - 1];
+        const next = idx < projects.length - 1 ? projects[idx + 1] : projects[0];
+        return { prev, next };
+      }
+    }
+  } catch (err) {
+    console.error("Error fetching adjacent projects:", err);
+  }
+
+  // Fallback with mock data
+  const mockEntries = Object.values(MOCK_PROJECTS);
+  const idx = mockEntries.findIndex((p) => p.slug === currentSlug);
+  if (idx !== -1 && mockEntries.length > 1) {
+    const prev = idx > 0 ? mockEntries[idx - 1] : mockEntries[mockEntries.length - 1];
+    const next = idx < mockEntries.length - 1 ? mockEntries[idx + 1] : mockEntries[0];
+    return {
+      prev: {
+        title: prev.title,
+        slug: prev.slug,
+        summary: prev.summary,
+        category: prev.category,
+        thumbnail_url: prev.thumbnail_url,
+      },
+      next: {
+        title: next.title,
+        slug: next.slug,
+        summary: next.summary,
+        category: next.category,
+        thumbnail_url: next.thumbnail_url,
+      },
+    };
+  }
+
+  return { prev: null, next: null };
+}
+
 export async function generateStaticParams() {
   const params: Array<{ slug: string }> = [];
 
@@ -100,7 +155,6 @@ export async function generateStaticParams() {
   });
 
   try {
-    // Add database project slugs using cookie-less client to prevent build errors
     const supabase = createClient();
     const { data: projects } = await supabase
       .from("projects")
@@ -132,7 +186,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 
   return {
-    title: project.title,
+    title: `${project.title} | Case Study`,
     description: project.summary,
     openGraph: {
       title: `${project.title} | Case Study`,
@@ -162,6 +216,8 @@ export default async function ProjectDetailPage({ params }: PageProps) {
     notFound();
   }
 
+  const { prev: prevProject, next: nextProject } = await getAdjacentProjects(slug);
+
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "CreativeWork",
@@ -170,34 +226,35 @@ export default async function ProjectDetailPage({ params }: PageProps) {
     "image": project.thumbnail_url || "",
     "creator": {
       "@type": "Person",
-      "name": "Software Engineer",
+      "name": "Mohammad Irfan",
     },
     "programmingLanguage": project.technologies,
   };
 
   return (
-    <article className="min-h-screen pt-20 pb-10 lg:h-screen lg:max-h-screen lg:overflow-hidden lg:pt-16 lg:pb-0 bg-surface text-on-surface">
+    <article className="min-h-screen pt-24 pb-20 bg-surface text-on-surface">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <div className="max-w-container-max mx-auto px-margin-mobile md:px-gutter lg:h-[calc(100vh-4rem)] lg:flex lg:flex-col lg:justify-between lg:py-4">
-        {/* Navigation header */}
-        <div className="mb-4 lg:mb-2 flex-shrink-0">
+      <div className="max-w-container-max mx-auto px-margin-mobile md:px-gutter">
+        {/* Navigation Breadcrumb */}
+        <div className="mb-6 flex-shrink-0">
           <Link
-            href="/"
-            className="inline-flex items-center gap-2 font-label-mono text-label-mono text-on-surface-variant hover:text-secondary transition-colors group"
+            href="/#projects"
+            className="inline-flex items-center gap-2 font-label-mono text-xs uppercase tracking-wider text-on-surface-variant hover:text-primary transition-colors group"
           >
-            <span className="material-symbols-outlined transition-transform group-hover:-translate-x-1">
-              arrow_back
-            </span>
-            Back to Portfolio
+            <ArrowLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-1" />
+            <span>~/back-to-portfolio</span>
           </Link>
         </div>
 
-        <div className="lg:flex-grow lg:min-h-0">
-          <ProjectDetailView project={project} />
-        </div>
+        {/* Redesigned Project Detail View */}
+        <ProjectDetailView
+          project={project}
+          prevProject={prevProject}
+          nextProject={nextProject}
+        />
       </div>
     </article>
   );
