@@ -20,25 +20,61 @@ interface MarkdownRendererProps {
   className?: string;
 }
 
+// Helper to extract plain text from arbitrary React children
+function getInnerText(node: unknown): string {
+  if (typeof node === "string" || typeof node === "number") return String(node);
+  if (Array.isArray(node)) return node.map(getInnerText).join("");
+  if (React.isValidElement(node)) {
+    const children = (node.props as { children?: unknown })?.children;
+    return children !== undefined ? getInnerText(children) : "";
+  }
+  return "";
+}
+
+const ALERT_TYPE_REGEX = /^\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]/i;
+
+// Matches the full [!TYPE] marker plus trailing spaces / one soft line break
+const MARKER_PREFIX_REGEX = /[ \t]*\[!(?:NOTE|TIP|IMPORTANT|WARNING|CAUTION)\][ \t]*(?:\r?\n)?/i;
+
+// Recursively removes the [!TYPE] marker text from the first matching string leaf
+function stripMarkerDeep(node: unknown): unknown {
+  if (typeof node === "string") {
+    return node.replace(MARKER_PREFIX_REGEX, "");
+  }
+  if (Array.isArray(node)) {
+    return node.map(stripMarkerDeep);
+  }
+  if (React.isValidElement(node)) {
+    const cleanedChildren = React.Children.toArray(
+      (node.props as { children?: React.ReactNode })?.children
+    )
+      .map((child) => stripMarkerDeep(child) as React.ReactNode)
+      .filter((c) => c !== "");
+
+    // Drop leading <br /> left behind by soft line breaks
+    let trimmed = cleanedChildren;
+    while (
+      trimmed.length > 0 &&
+      typeof trimmed[0] !== "string" &&
+      React.isValidElement(trimmed[0]) &&
+      (trimmed[0].type === "br" ||
+        (trimmed[0].props as { node?: { tagName?: string } })?.node?.tagName === "br")
+    ) {
+      trimmed = trimmed.slice(1);
+    }
+
+    return React.cloneElement(node, node.props as Partial<unknown>, ...trimmed);
+  }
+  return node;
+}
+
 // Helper to parse GitHub alert syntax in blockquotes
 function parseAlert(children: React.ReactNode) {
-  const text = React.Children.toArray(children)
-    .map((child: any) => {
-      if (typeof child === "string") return child;
-      if (child?.props?.children) {
-        return typeof child.props.children === "string"
-          ? child.props.children
-          : "";
-      }
-      return "";
-    })
-    .join("");
-
-  const match = text.match(/^\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*(.*)/is);
+  const text = getInnerText(children);
+  const match = text.match(ALERT_TYPE_REGEX);
   if (!match) return null;
 
   const type = match[1].toUpperCase();
-  const restOfText = match[2];
 
   let icon = <Info className="w-5 h-5 text-blue-500 shrink-0" />;
   let title = "Note";
@@ -62,12 +98,24 @@ function parseAlert(children: React.ReactNode) {
     borderClass = "border-rose-500/30 bg-rose-500/5 text-rose-950 dark:text-rose-200";
   }
 
+  // Strip the [!TYPE] marker but keep ALL remaining content.
+  // Handles both cases: marker alone on its own line AND soft-break content
+  // sharing the same paragraph ("[!NOTE]\nActual text...").
+  const body = React.Children.toArray(children)
+    .map((child) => {
+      if (!ALERT_TYPE_REGEX.test(getInnerText(child))) return child;
+      const cleaned = stripMarkerDeep(child);
+      // Drop nodes left empty after stripping the marker
+      return getInnerText(cleaned).trim() ? cleaned : null;
+    })
+    .filter(Boolean) as React.ReactNode[];
+
   return {
     type,
     title,
     icon,
     borderClass,
-    content: restOfText,
+    body,
   };
 }
 
@@ -167,8 +215,8 @@ export function MarkdownRenderer({ content, className = "" }: MarkdownRendererPr
                     {alert.icon}
                     <span>{alert.title}</span>
                   </div>
-                  <div className="font-body-md text-sm md:text-base leading-relaxed pl-7 text-on-surface">
-                    {alert.content || children}
+                  <div className="font-body-md text-sm md:text-base leading-relaxed text-on-surface space-y-3 [&>*:last-child]:mb-0">
+                    {alert.body.length > 0 ? alert.body : children}
                   </div>
                 </div>
               );
@@ -211,18 +259,20 @@ export function MarkdownRenderer({ content, className = "" }: MarkdownRendererPr
               />
               {alt && (
                 <figcaption className="text-center font-label-mono text-xs text-on-surface-variant/70 mt-2">
-                  // {alt}
+                  {"//"} {alt}
                 </figcaption>
               )}
             </figure>
           ),
-          code: ({ node, className, children, ...props }: any) => {
+          code: ({ className, children, ...props }) => {
             const match = /language-(\w+)/.exec(className || "");
             const language = match ? match[1] : "";
             const codeString = String(children).replace(/\n$/, "");
 
-            // 1. Mermaid diagram renderer
-            if (language === "mermaid" || (!language && codeString.startsWith("graph") || codeString.startsWith("flowchart") || codeString.startsWith("sequenceDiagram") || codeString.startsWith("classDiagram") || codeString.startsWith("erDiagram") || codeString.startsWith("stateDiagram") || codeString.startsWith("gitGraph"))) {
+            // 1. Mermaid diagram renderer (explicit language OR heuristic on unlabeled blocks)
+            const MERMAID_KEYWORDS = ["graph", "flowchart", "sequenceDiagram", "classDiagram", "erDiagram", "stateDiagram", "gitGraph"];
+            const looksLikeMermaid = MERMAID_KEYWORDS.some((k) => codeString.startsWith(k));
+            if (language === "mermaid" || (!language && looksLikeMermaid)) {
               return <MermaidDiagram chart={codeString} />;
             }
 

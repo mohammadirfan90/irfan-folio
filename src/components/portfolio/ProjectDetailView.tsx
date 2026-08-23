@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useRef, useState, useMemo } from "react";
 import Link from "next/link";
+import GithubSlugger from "github-slugger";
 import { Button } from "@/components/ui/button";
 import { LocalProject, AdjacentProject } from "@/app/(public)/projects/[slug]/page";
 import { MarkdownRenderer } from "@/components/markdown/MarkdownRenderer";
@@ -20,6 +21,11 @@ import {
   ArrowRight,
   Sparkles,
   ListTree,
+  Gauge,
+  Lightbulb,
+  BookOpen,
+  CircleCheck,
+  Layers,
   Send
 } from "lucide-react";
 
@@ -107,6 +113,7 @@ function TechLogo({ name }: { name: string }) {
 function extractHeadings(markdown: string) {
   if (!markdown) return [];
   const lines = markdown.split("\n");
+  const slugger = new GithubSlugger();
   const headings: Array<{ id: string; text: string; level: number }> = [];
 
   lines.forEach((line) => {
@@ -115,12 +122,8 @@ function extractHeadings(markdown: string) {
       const level = match[1].length;
       const rawText = match[2].trim();
       const cleanText = rawText.replace(/[*_~`]/g, "");
-      const id = cleanText
-        .toLowerCase()
-        .replace(/[^\w\s-]/g, "")
-        .replace(/\s+/g, "-");
-
-      headings.push({ id, text: cleanText, level });
+      // github-slugger matches rehype-slug's algorithm exactly
+      headings.push({ id: slugger.slug(cleanText), text: cleanText, level });
     }
   });
 
@@ -135,6 +138,7 @@ export function ProjectDetailView({
   const [currentIdx, setCurrentIdx] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<string>("");
+  const lightboxCloseRef = useRef<HTMLButtonElement>(null);
 
   const screenshots = project.screenshots || [];
   const technologies = project.technologies || [];
@@ -143,6 +147,20 @@ export function ProjectDetailView({
   const headings = useMemo(() => {
     return extractHeadings(project.description || "");
   }, [project.description]);
+
+  // Derived lists from admin "dead" fields
+  const metricList = useMemo(
+    () => (project.metrics || "").split(/[•\n]/).map((s) => s.trim()).filter(Boolean),
+    [project.metrics]
+  );
+  const featureList = useMemo(
+    () => (project.key_features || "").split("\n").map((s) => s.trim().replace(/^[-*]\s*/, "")).filter(Boolean),
+    [project.key_features]
+  );
+  const lessonList = useMemo(
+    () => (project.lessons_learned || "").split("\n").map((s) => s.trim().replace(/^[-*]\s*/, "")).filter(Boolean),
+    [project.lessons_learned]
+  );
 
   // Track active heading on scroll
   useEffect(() => {
@@ -166,6 +184,19 @@ export function ProjectDetailView({
 
     return () => observer.disconnect();
   }, [headings]);
+
+  // Lightbox body scroll lock + focus management
+  useEffect(() => {
+    if (!lightboxOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    document.body.style.overflow = "hidden";
+    lightboxCloseRef.current?.focus();
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      previousFocus?.focus?.();
+    };
+  }, [lightboxOpen]);
 
   // Lightbox keyboard controls
   useEffect(() => {
@@ -231,6 +262,19 @@ export function ProjectDetailView({
             <p className="font-body-md text-base md:text-lg text-on-surface-variant leading-relaxed">
               {project.summary}
             </p>
+            {metricList.length > 0 && (
+              <div className="flex flex-wrap gap-2 pt-1">
+                {metricList.map((metric, idx) => (
+                  <span
+                    key={idx}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-container-low border border-outline-variant/30 font-label-mono text-[11px] font-semibold text-primary"
+                  >
+                    <Gauge className="w-3.5 h-3.5 text-accent shrink-0" />
+                    {metric}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Action Buttons */}
@@ -370,85 +414,135 @@ export function ProjectDetailView({
           <div className="p-6 sm:p-8 rounded-3xl border border-outline-variant/20 bg-background shadow-xs">
             <MarkdownRenderer content={project.description || ""} />
           </div>
+
+          {/* Lessons Learned (from admin form) */}
+          {lessonList.length > 0 && (
+            <div className="p-6 sm:p-8 rounded-3xl border border-accent/25 bg-accent/5 space-y-4">
+              <h3 className="font-label-mono text-xs text-on-surface-variant uppercase font-bold tracking-widest flex items-center gap-1.5">
+                <BookOpen className="w-3.5 h-3.5 text-accent" />
+                <span>Lessons Learned</span>
+              </h3>
+              <ul className="space-y-2.5">
+                {lessonList.map((lesson, idx) => (
+                  <li key={idx} className="flex items-start gap-2.5">
+                    <Lightbulb className="w-4 h-4 text-accent shrink-0 mt-0.5" />
+                    <span className="font-body-md text-sm md:text-base text-on-surface leading-relaxed">
+                      {lesson}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </main>
 
         {/* RIGHT COLUMN: Sticky Specs Sidebar & TOC (35% / 4 cols) */}
-        <aside className="lg:col-span-4 space-y-6 lg:sticky lg:top-24">
-          
-          {/* 1. Project Specs Card */}
-          <div className="p-5 sm:p-6 rounded-2xl border border-outline-variant/20 bg-surface-container-lowest dark:bg-card/70 shadow-xs space-y-5">
-            <h3 className="font-label-mono text-xs text-on-surface-variant uppercase font-bold tracking-widest flex items-center gap-1.5">
-              <span className="text-accent">//</span>
-              <span>Project Specs</span>
-            </h3>
+        <aside className="lg:col-span-4 space-y-6 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto scrollbar-none">
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-surface-container-low flex items-center justify-center text-primary/80 shrink-0">
-                  <User className="w-4 h-4" />
-                </div>
-                <div className="min-w-0">
-                  <span className="font-label-mono text-[10px] text-on-surface-variant uppercase tracking-wider block">
-                    Role
-                  </span>
-                  <span className="font-body-md text-sm font-semibold text-primary block truncate">
-                    {project.role || "Full-stack Developer"}
-                  </span>
-                </div>
-              </div>
+          {/* 1. Project Specs Card (rows render only when data exists) */}
+          {(project.role || project.team_size || project.duration || project.status) && (
+            <div className="p-5 sm:p-6 rounded-2xl border border-outline-variant/20 bg-surface-container-lowest dark:bg-card/70 shadow-xs space-y-5">
+              <h3 className="font-label-mono text-xs text-on-surface-variant uppercase font-bold tracking-widest flex items-center gap-1.5">
+                <span className="text-accent">{"//"}</span>
+                <span>Project Specs</span>
+              </h3>
 
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-surface-container-low flex items-center justify-center text-primary/80 shrink-0">
-                  <Users className="w-4 h-4" />
-                </div>
-                <div className="min-w-0">
-                  <span className="font-label-mono text-[10px] text-on-surface-variant uppercase tracking-wider block">
-                    Team Size
-                  </span>
-                  <span className="font-body-md text-sm font-semibold text-primary block truncate">
-                    {project.team_size || "1 Member"}
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-surface-container-low flex items-center justify-center text-primary/80 shrink-0">
-                  <Calendar className="w-4 h-4" />
-                </div>
-                <div className="min-w-0">
-                  <span className="font-label-mono text-[10px] text-on-surface-variant uppercase tracking-wider block">
-                    Timeline
-                  </span>
-                  <span className="font-body-md text-sm font-semibold text-primary block truncate">
-                    {project.duration || "3 Months"}
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-surface-container-low flex items-center justify-center text-primary/80 shrink-0">
-                  <Activity className="w-4 h-4" />
-                </div>
-                <div className="min-w-0">
-                  <span className="font-label-mono text-[10px] text-on-surface-variant uppercase tracking-wider block">
-                    Status
-                  </span>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className={`w-1.5 h-1.5 rounded-full ${statusColor} animate-pulse`} />
-                    <span className="font-body-md text-sm font-semibold text-primary">
-                      {project.status || "Production"}
-                    </span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
+                {project.role && (
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-surface-container-low flex items-center justify-center text-primary/80 shrink-0">
+                      <User className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="font-label-mono text-[10px] text-on-surface-variant uppercase tracking-wider block">
+                        Role
+                      </span>
+                      <span className="font-body-md text-sm font-semibold text-primary block truncate" title={project.role}>
+                        {project.role}
+                      </span>
+                    </div>
                   </div>
-                </div>
+                )}
+
+                {project.team_size && (
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-surface-container-low flex items-center justify-center text-primary/80 shrink-0">
+                      <Users className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="font-label-mono text-[10px] text-on-surface-variant uppercase tracking-wider block">
+                        Team Size
+                      </span>
+                      <span className="font-body-md text-sm font-semibold text-primary block truncate">
+                        {project.team_size}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {project.duration && (
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-surface-container-low flex items-center justify-center text-primary/80 shrink-0">
+                      <Calendar className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="font-label-mono text-[10px] text-on-surface-variant uppercase tracking-wider block">
+                        Timeline
+                      </span>
+                      <span className="font-body-md text-sm font-semibold text-primary block truncate">
+                        {project.duration}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {project.status && (
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-surface-container-low flex items-center justify-center text-primary/80 shrink-0">
+                      <Activity className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="font-label-mono text-[10px] text-on-surface-variant uppercase tracking-wider block">
+                        Status
+                      </span>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className={`w-1.5 h-1.5 rounded-full ${statusColor} animate-pulse`} />
+                        <span className="font-body-md text-sm font-semibold text-primary">
+                          {project.status}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
-          </div>
+          )}
 
-          {/* 2. Categorized Tech Stack */}
+          {/* 2. Key Features (from admin form) */}
+          {featureList.length > 0 && (
+            <div className="p-5 sm:p-6 rounded-2xl border border-outline-variant/20 bg-surface-container-lowest dark:bg-card/70 shadow-xs space-y-3">
+              <h3 className="font-label-mono text-xs text-on-surface-variant uppercase font-bold tracking-widest flex items-center gap-1.5">
+                <span className="text-accent">{"//"}</span>
+                <span>Key Features</span>
+              </h3>
+              <ul className="space-y-2">
+                {featureList.map((feature, idx) => (
+                  <li key={idx} className="flex items-start gap-2">
+                    <CircleCheck className="w-4 h-4 text-accent shrink-0 mt-0.5" />
+                    <span className="font-body-md text-xs text-on-surface-variant leading-relaxed">
+                      {feature}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* 3. Tech Stack */}
           {technologies.length > 0 && (
             <div className="p-5 sm:p-6 rounded-2xl border border-outline-variant/20 bg-surface-container-lowest dark:bg-card/70 shadow-xs space-y-4">
               <h3 className="font-label-mono text-xs text-on-surface-variant uppercase font-bold tracking-widest flex items-center gap-1.5">
-                <span className="text-accent">//</span>
+                <span className="text-accent">{"//"}</span>
                 <span>Technologies</span>
               </h3>
 
@@ -463,10 +557,17 @@ export function ProjectDetailView({
                   </div>
                 ))}
               </div>
+
+              {project.architecture_preview && (
+                <p className="font-label-mono text-[10px] leading-relaxed text-on-surface-variant/80 border-t border-outline-variant/15 pt-3 flex items-start gap-1.5">
+                  <Layers className="w-3 h-3 text-accent shrink-0 mt-0.5" />
+                  <span>{project.architecture_preview}</span>
+                </p>
+              )}
             </div>
           )}
 
-          {/* 3. Dynamic Table of Contents */}
+          {/* 4. Dynamic Table of Contents */}
           {headings.length > 0 && (
             <div className="p-5 sm:p-6 rounded-2xl border border-outline-variant/20 bg-surface-container-lowest dark:bg-card/70 shadow-xs space-y-3">
               <h3 className="font-label-mono text-xs text-on-surface-variant uppercase font-bold tracking-widest flex items-center gap-2">
@@ -497,7 +598,7 @@ export function ProjectDetailView({
             </div>
           )}
 
-          {/* 4. Contact CTA Banner */}
+          {/* 5. Contact CTA Banner */}
           <div className="p-5 rounded-2xl border border-accent/30 bg-accent/5 space-y-3">
             <div className="flex items-center gap-2 font-label-mono text-xs uppercase font-bold text-primary">
               <Sparkles className="w-3.5 h-3.5 text-accent" />
@@ -567,6 +668,9 @@ export function ProjectDetailView({
       {lightboxOpen && screenshots.length > 0 && (
         <div
           onClick={() => setLightboxOpen(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-label={`${project.title} screenshot viewer`}
           className="fixed inset-0 z-50 bg-black/95 backdrop-blur-md flex flex-col items-center justify-center p-4 sm:p-6 cursor-zoom-out animate-in fade-in duration-200"
         >
           {/* Top Bar */}
@@ -582,9 +686,11 @@ export function ProjectDetailView({
               <span className="hidden sm:inline text-white/40">←/→ arrows to navigate • esc to close</span>
               <button
                 type="button"
+                ref={lightboxCloseRef}
                 onClick={() => setLightboxOpen(false)}
-                className="p-1.5 rounded-full hover:bg-white/10 text-white cursor-pointer"
+                className="p-1.5 rounded-full hover:bg-white/10 text-white cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
                 title="Close"
+                aria-label="Close screenshot viewer"
               >
                 <X className="w-5 h-5" />
               </button>

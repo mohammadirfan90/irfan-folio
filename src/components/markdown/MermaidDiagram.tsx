@@ -67,10 +67,10 @@ export function MermaidDiagram({ chart }: MermaidDiagramProps) {
           setSvg(renderedSvg);
           setError(null);
         }
-      } catch (err: any) {
+      } catch (err) {
         if (isMounted) {
           console.error("Mermaid rendering failed:", err);
-          setError(err?.message || "Failed to render Mermaid diagram");
+          setError(err instanceof Error ? err.message : "Failed to render Mermaid diagram");
         }
       }
     }

@@ -11,17 +11,22 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { createClient } from "@/lib/supabase/client";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
-import { 
-  Search, 
-  Plus, 
-  ExternalLink, 
-  Trash2, 
-  Edit3, 
+import {
+  Search,
+  Plus,
+  ExternalLink,
+  Trash2,
+  Edit3,
   ArrowLeft,
-  Globe,
-  Code,
-  FileText
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
+
+function toErrorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (typeof err === "string") return err;
+  return "Unknown error";
+}
 
 interface ProjectsManagerProps {
   initialProjects: Project[];
@@ -37,11 +42,48 @@ function ProjectsManagerContent({ initialProjects }: ProjectsManagerProps) {
   const [galleryUrls, setGalleryUrls] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isDeletingId, setIsDeletingId] = useState<string | null>(null);
+  const [isDirty, setIsDirty] = useState(false);
 
   const searchParams = useSearchParams();
   const router = useRouter();
 
+  // Warn before closing/refreshing the tab with unsaved edits
+  useEffect(() => {
+    if (!isDirty || !editingProject) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [isDirty, editingProject]);
+
+  // Keep local copy in sync when the server sends refreshed data
+  // (setState-during-render pattern — avoids a cascading effect)
+  const [syncedProjects, setSyncedProjects] = useState(initialProjects);
+  if (initialProjects !== syncedProjects) {
+    setSyncedProjects(initialProjects);
+    setProjects(initialProjects);
+  }
+
+  const fetchProjectImages = async (projectId: string) => {
+    try {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("project_images")
+        .select("image_url")
+        .eq("project_id", projectId)
+        .order("display_order", { ascending: true });
+      if (data) {
+        setGalleryUrls(data.map((img) => img.image_url));
+      }
+    } catch (err) {
+      console.error("Failed to load project images:", err);
+    }
+  };
+
   // Handle URL query parameters for edit/new project
+  /* eslint-disable react-hooks/set-state-in-effect, react-hooks/immutability -- legacy URL-driven editor state */
   useEffect(() => {
     const editId = searchParams.get("edit");
     const action = searchParams.get("action");
@@ -52,6 +94,7 @@ function ProjectsManagerContent({ initialProjects }: ProjectsManagerProps) {
         setEditingProject(proj);
         setMarkdownContent(proj.description || "");
         setThumbnailUrl(proj.thumbnail_url || "");
+        setIsDirty(false);
         fetchProjectImages(proj.id);
       }
     } else if (action === "new") {
@@ -71,27 +114,14 @@ function ProjectsManagerContent({ initialProjects }: ProjectsManagerProps) {
       setThumbnailUrl("");
       setGalleryUrls([]);
       setMsg("");
+      setIsDirty(false);
     } else {
       setEditingProject(null);
       setMarkdownContent("");
+      setIsDirty(false);
     }
   }, [searchParams, projects]);
-
-  const fetchProjectImages = async (projectId: string) => {
-    try {
-      const supabase = createClient();
-      const { data } = await supabase
-        .from("project_images")
-        .select("image_url")
-        .eq("project_id", projectId)
-        .order("display_order", { ascending: true });
-      if (data) {
-        setGalleryUrls(data.map((img) => img.image_url));
-      }
-    } catch (err) {
-      console.error("Failed to load project images:", err);
-    }
-  };
+  /* eslint-enable react-hooks/set-state-in-effect, react-hooks/immutability */
 
   const handleEditClick = (project: Project) => {
     window.history.pushState(null, "", `/admin/projects?edit=${project.id}`);
@@ -100,6 +130,7 @@ function ProjectsManagerContent({ initialProjects }: ProjectsManagerProps) {
     setThumbnailUrl(project.thumbnail_url || "");
     setGalleryUrls([]);
     setMsg("");
+    setIsDirty(false);
     fetchProjectImages(project.id);
   };
 
@@ -121,13 +152,30 @@ function ProjectsManagerContent({ initialProjects }: ProjectsManagerProps) {
     setThumbnailUrl("");
     setGalleryUrls([]);
     setMsg("");
+    setIsDirty(false);
   };
 
   const handleCancelClick = () => {
+    if (isDirty && !confirm("You have unsaved changes. Discard them and leave the editor?")) {
+      return;
+    }
     window.history.pushState(null, "", "/admin/projects");
     setEditingProject(null);
     setMarkdownContent("");
     setMsg("");
+    setIsDirty(false);
+  };
+
+  // Reorder gallery slides (admin scrubber)
+  const moveGalleryImage = (index: number, direction: -1 | 1) => {
+    setGalleryUrls((prev) => {
+      const target = index + direction;
+      if (target < 0 || target >= prev.length) return prev;
+      const next = [...prev];
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+    setIsDirty(true);
   };
 
 
@@ -144,10 +192,35 @@ function ProjectsManagerContent({ initialProjects }: ProjectsManagerProps) {
     formData.append("thumbnail_url", thumbnailUrl);
     formData.append("gallery_urls", JSON.stringify(galleryUrls));
 
-    // Auto-generate slug from title if not already present on editingProject
-    const title = formData.get("title") as string;
-    const slug = editingProject?.slug || (title ? title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") : "");
-    formData.append("slug", slug);
+    // Normalize technologies: trim entries and drop empties
+    const rawTechnologies = (formData.get("technologies") as string) || "";
+    const cleanedTechnologies = rawTechnologies
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean)
+      .join(", ");
+    if (!cleanedTechnologies) {
+      setIsSaving(false);
+      setMsg("Error: Add at least one technology.");
+      return;
+    }
+    formData.set("technologies", cleanedTechnologies);
+
+    // Slug: use explicit field value, fall back to generating from title
+    const title = (formData.get("title") as string)?.trim() || "";
+    const slug =
+      ((formData.get("slug") as string) || "").trim() ||
+      editingProject?.slug ||
+      (title ? title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") : "");
+
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
+      setIsSaving(false);
+      setMsg(
+        "Error: URL slug must be lowercase letters, numbers and single hyphens (e.g. my-project)."
+      );
+      return;
+    }
+    formData.set("slug", slug);
 
     try {
       const res = await upsertProject(formData);
@@ -155,11 +228,14 @@ function ProjectsManagerContent({ initialProjects }: ProjectsManagerProps) {
         setMsg(`Error: ${res.error}`);
       } else {
         setMsg("Project saved successfully.");
+        setIsDirty(false);
         window.history.pushState(null, "", "/admin/projects");
-        window.location.reload();
+        setEditingProject(null);
+        setMarkdownContent("");
+        router.refresh();
       }
-    } catch (err: any) {
-      setMsg(`Error: ${err.message || "Failed to save."}`);
+    } catch (err) {
+      setMsg(`Error: ${toErrorMessage(err) || "Failed to save."}`);
     } finally {
       setIsSaving(false);
     }
@@ -176,8 +252,8 @@ function ProjectsManagerContent({ initialProjects }: ProjectsManagerProps) {
       } else {
         setProjects(projects.filter((p) => p.id !== id));
       }
-    } catch (err: any) {
-      alert(`Error: ${err.message || "Failed to delete."}`);
+    } catch (err) {
+      alert(`Error: ${toErrorMessage(err) || "Failed to delete."}`);
     } finally {
       setIsDeletingId(null);
     }
@@ -345,7 +421,11 @@ function ProjectsManagerContent({ initialProjects }: ProjectsManagerProps) {
         
         /* FORM COMPACT EDITOR VIEW */
         <div className="max-w-5xl mx-auto">
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form
+            onSubmit={handleSubmit}
+            onChange={() => setIsDirty(true)}
+            className="space-y-6"
+          >
             
             {/* Card 1: General Info */}
             <div className="bg-white border border-neutral-200/60 rounded-xl p-5 shadow-2xs space-y-4">
@@ -367,8 +447,25 @@ function ProjectsManagerContent({ initialProjects }: ProjectsManagerProps) {
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-2">
+                  <Label htmlFor="slug" className="block text-sm font-semibold text-neutral-500 uppercase tracking-wider mb-2">
+                    URL Slug
+                  </Label>
+                  <Input
+                    id="slug"
+                    name="slug"
+                    defaultValue={editingProject.slug || ""}
+                    placeholder={editingProject.slug ? editingProject.slug : "auto-generated from title"}
+                    pattern="[a-z0-9]+(-[a-z0-9]+)*"
+                    title="Lowercase letters, numbers and single hyphens (e.g. my-project)"
+                    className="h-9.5 text-sm font-mono"
+                  />
+                  <span className="text-xs text-neutral-400 block leading-snug">
+                    Public URL: /projects/&lt;slug&gt; — leave empty to auto-generate from the title.
+                  </span>
+                </div>
+                <div className="space-y-2 sm:col-span-2">
                   <Label htmlFor="category" className="block text-sm font-semibold text-neutral-500 uppercase tracking-wider mb-2">
                     Category Tag
                   </Label>
@@ -381,20 +478,20 @@ function ProjectsManagerContent({ initialProjects }: ProjectsManagerProps) {
                     className="h-9.5 text-sm"
                   />
                 </div>
+              </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="technologies" className="block text-sm font-semibold text-neutral-500 uppercase tracking-wider mb-2">
-                    Technologies (Comma Separated)
-                  </Label>
-                  <Input
-                    id="technologies"
-                    name="technologies"
-                    defaultValue={editingProject.technologies?.join(", ") || ""}
-                    required
-                    placeholder="e.g. React, Next.js, FastAPI"
-                    className="h-9.5 text-sm"
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="technologies" className="block text-sm font-semibold text-neutral-500 uppercase tracking-wider mb-2">
+                  Technologies (Comma Separated)
+                </Label>
+                <Input
+                  id="technologies"
+                  name="technologies"
+                  defaultValue={editingProject.technologies?.join(", ") || ""}
+                  required
+                  placeholder="e.g. React, Next.js, FastAPI"
+                  className="h-9.5 text-sm"
+                />
               </div>
 
               <div className="space-y-2">
@@ -424,7 +521,10 @@ function ProjectsManagerContent({ initialProjects }: ProjectsManagerProps) {
                 <input type="hidden" name="description" value={markdownContent} />
                 <MarkdownEditor
                   value={markdownContent}
-                  onChange={setMarkdownContent}
+                  onChange={(value) => {
+                    setMarkdownContent(value);
+                    setIsDirty(true);
+                  }}
                   minHeight="380px"
                   placeholder="Write your case study in Markdown... Include ## headings, tables, and ```mermaid architecture charts."
                 />
@@ -637,7 +737,10 @@ function ProjectsManagerContent({ initialProjects }: ProjectsManagerProps) {
                   label="Project Mockup / Main Thumbnail Screenshot"
                   destinationPath="projects"
                   currentUrl={thumbnailUrl}
-                  onUploadSuccess={setThumbnailUrl}
+                  onUploadSuccess={(url) => {
+                    setThumbnailUrl(url);
+                    setIsDirty(true);
+                  }}
                 />
               </div>
 
@@ -651,15 +754,41 @@ function ProjectsManagerContent({ initialProjects }: ProjectsManagerProps) {
                   <div className="grid grid-cols-4 gap-2">
                     {galleryUrls.map((url, index) => (
                       <div key={index} className="relative group/img rounded-lg overflow-hidden border border-neutral-200 aspect-[16/10] bg-neutral-50 animate-fade-in">
-                        <img src={url} className="w-full h-full object-cover" />
+                        <img src={url} className="w-full h-full object-cover" alt={`Screenshot ${index + 1}`} />
                         <button
                           type="button"
-                          onClick={() => setGalleryUrls(prev => prev.filter((_, i) => i !== index))}
+                          onClick={() => {
+                            setGalleryUrls((prev) => prev.filter((_, i) => i !== index));
+                            setIsDirty(true);
+                          }}
                           className="absolute inset-0 bg-black/60 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center text-white cursor-pointer"
                           aria-label="Remove image"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
+                        {/* Reorder controls */}
+                        {galleryUrls.length > 1 && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => moveGalleryImage(index, -1)}
+                              disabled={index === 0}
+                              className="absolute top-1 left-1 p-1 rounded-md bg-black/60 text-white opacity-0 group-hover/img:opacity-100 disabled:opacity-25 hover:bg-black/80 transition-all cursor-pointer"
+                              aria-label="Move image earlier"
+                            >
+                              <ChevronLeft className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => moveGalleryImage(index, 1)}
+                              disabled={index === galleryUrls.length - 1}
+                              className="absolute top-1 right-1 p-1 rounded-md bg-black/60 text-white opacity-0 group-hover/img:opacity-100 disabled:opacity-25 hover:bg-black/80 transition-all cursor-pointer"
+                              aria-label="Move image later"
+                            >
+                              <ChevronRight className="w-3.5 h-3.5" />
+                            </button>
+                          </>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -669,7 +798,10 @@ function ProjectsManagerContent({ initialProjects }: ProjectsManagerProps) {
                   key={galleryUrls.length}
                   label="Add Screenshot Slide to Gallery"
                   destinationPath="projects"
-                  onUploadSuccess={(url) => setGalleryUrls((prev) => [...prev, url])}
+                  onUploadSuccess={(url) => {
+                    setGalleryUrls((prev) => [...prev, url]);
+                    setIsDirty(true);
+                  }}
                 />
               </div>
             </div>
