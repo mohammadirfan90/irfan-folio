@@ -4,15 +4,16 @@ import React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
+import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import rehypeSlug from "rehype-slug";
 import { MermaidDiagram } from "./MermaidDiagram";
 import { CodeBlock } from "./CodeBlock";
-import { 
-  Info, 
-  Lightbulb, 
-  AlertTriangle, 
-  AlertOctagon, 
-  ShieldAlert 
+import {
+  Info,
+  Lightbulb,
+  AlertTriangle,
+  AlertOctagon,
+  ShieldAlert
 } from "lucide-react";
 
 interface MarkdownRendererProps {
@@ -32,6 +33,41 @@ function getInnerText(node: unknown): string {
 }
 
 const ALERT_TYPE_REGEX = /^\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]/i;
+
+// Sanitize schema for case-study markdown. The default schema is strict:
+// it strips <script>, <iframe>, <style>, on* handlers, etc. We extend it
+// just enough to keep:
+//   - className on code/pre/span (Prism syntax highlighting classes)
+//   - className on div (Mermaid container, custom callout wrappers)
+//   - id on headings (rehype-slug runs *after* sanitize, so it can still
+//     add ids; we also allow the existing ids to round-trip)
+//   - align/role attributes sometimes used inside tables
+// Everything else (including <script>, <iframe>, <style>, on*) stays denied.
+const sanitizeSchema = {
+  ...defaultSchema,
+  attributes: {
+    ...defaultSchema.attributes,
+    code: [...(defaultSchema.attributes?.code || []), "className"],
+    pre: [...(defaultSchema.attributes?.pre || []), "className"],
+    span: [...(defaultSchema.attributes?.span || []), "className"],
+    div: [...(defaultSchema.attributes?.div || []), "className"],
+    th: [...(defaultSchema.attributes?.th || []), "align"],
+    td: [...(defaultSchema.attributes?.td || []), "align"],
+    "*": [
+      ...(defaultSchema.attributes?.["*"] || []),
+      "className",
+      "id",
+    ],
+  },
+  // Allow the tags we use in our custom markdown renderers. The default
+  // schema already includes the common ones (a, p, ul, ol, li, h1-h6,
+  // blockquote, code, pre, em, strong, hr, br, table, thead, tbody,
+  // tr, th, td, img). Mermaid, our callouts, and Prism never need
+  // <script>, <iframe>, or <style> in the final HTML.
+  tagNames: [
+    ...(defaultSchema.tagNames || []),
+  ],
+};
 
 // Matches the full [!TYPE] marker plus trailing spaces / one soft line break
 const MARKER_PREFIX_REGEX = /[ \t]*\[!(?:NOTE|TIP|IMPORTANT|WARNING|CAUTION)\][ \t]*(?:\r?\n)?/i;
@@ -132,7 +168,11 @@ export function MarkdownRenderer({ content, className = "" }: MarkdownRendererPr
     <div className={`prose-case-study text-on-surface leading-relaxed ${className}`}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeRaw, rehypeSlug]}
+        rehypePlugins={[
+          rehypeRaw,
+          [rehypeSanitize, sanitizeSchema],
+          rehypeSlug,
+        ]}
         components={{
           // Headings with anchor targets for TOC
           h1: ({ node, ...props }) => (
