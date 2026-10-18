@@ -1,7 +1,5 @@
 import React from "react";
-import { Navbar } from "@/components/layout/Navbar";
-import { Footer, FooterSocial } from "@/components/layout/Footer";
-import { ScrollToTop } from "@/components/layout/ScrollToTop";
+import { FooterSocial } from "@/components/layout/Footer";
 import { createClient } from "@/lib/supabase/client";
 import { PublicLayoutShell } from "@/components/layout/PublicLayoutShell";
 
