@@ -1,8 +1,7 @@
 import React from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { MOCK_PROJECTS, ExtendedProject } from "@/constants/projects";
-import { Project } from "@/types";
+import type { Project, LocalProject, AdjacentProject } from "@/types";
 import { createClient } from "@/lib/supabase/client";
 import type { Metadata } from "next";
 import { ProjectDetailView } from "@/components/portfolio/ProjectDetailView";
@@ -12,167 +11,100 @@ interface PageProps {
   params: Promise<{ slug: string }>;
 }
 
-export interface LocalProject extends ExtendedProject {
-  key_features?: string;
-}
-
-export interface AdjacentProject {
-  title: string;
-  slug: string;
-  summary: string;
-  category?: string;
-  thumbnail_url?: string;
-}
-
 async function getProject(slug: string): Promise<LocalProject | null> {
-  try {
-    const supabase = createClient();
-    const { data } = await supabase
-      .from("projects")
-      .select("*")
-      .eq("slug", slug)
-      .eq("published", true)
-      .maybeSingle();
+  const supabase = createClient();
+  const { data } = await supabase
+    .from("projects")
+    .select("*")
+    .eq("slug", slug)
+    .eq("published", true)
+    .maybeSingle();
 
-    if (data) {
-      const typedData = data as Project;
-
-      // Fetch screenshots from database
-      const { data: images } = await supabase
-        .from("project_images")
-        .select("image_url")
-        .eq("project_id", typedData.id)
-        .order("display_order", { ascending: true });
-
-      const screenshots = images && images.length > 0
-        ? images.map((img) => img.image_url)
-        : [typedData.thumbnail_url].filter(Boolean) as string[];
-
-      // Map database row to LocalProject
-      return {
-        id: typedData.id,
-        title: typedData.title,
-        slug: typedData.slug,
-        summary: typedData.summary,
-        description: typedData.description || "",
-        key_features: typedData.key_features || "",
-        category: typedData.category,
-        technologies: typedData.technologies,
-        github_url: typedData.github_url,
-        live_url: typedData.live_url,
-        challenges: typedData.challenges,
-        future_plans: typedData.future_plans,
-        featured: typedData.featured,
-        published: typedData.published,
-        thumbnail_url: typedData.thumbnail_url,
-        role: typedData.role || MOCK_PROJECTS[slug]?.role || "",
-        team_size: typedData.team_size || MOCK_PROJECTS[slug]?.team_size || "",
-        duration: typedData.duration || MOCK_PROJECTS[slug]?.duration || "",
-        status: typedData.status || MOCK_PROJECTS[slug]?.status || "",
-        metrics: typedData.metrics || MOCK_PROJECTS[slug]?.metrics || "",
-        architecture_preview: typedData.architecture_preview || MOCK_PROJECTS[slug]?.architecture_preview || "",
-        lessons_learned: typedData.lessons_learned || MOCK_PROJECTS[slug]?.lessons_learned || "",
-        architecture: typedData.architecture_preview || MOCK_PROJECTS[slug]?.architecture || "",
-        screenshots,
-      };
-    }
-  } catch (err) {
-    console.error("Error fetching project from Supabase:", err);
+  if (!data) {
+    return null;
   }
 
-  // Fallback to mock data if not in database
-  const mock = MOCK_PROJECTS[slug];
-  if (mock) {
-    return {
-      ...mock,
-      key_features: mock.key_features || "",
-      role: mock.role || "",
-      team_size: mock.team_size || "",
-      duration: mock.duration || "",
-      status: mock.status || "",
-      metrics: mock.metrics || "",
-      architecture_preview: mock.architecture_preview || "",
-      lessons_learned: mock.lessons_learned || "",
-    };
-  }
-  return null;
+  const typedData = data as Project;
+
+  // Fetch screenshots from database
+  const { data: images } = await supabase
+    .from("project_images")
+    .select("image_url")
+    .eq("project_id", typedData.id)
+    .order("display_order", { ascending: true });
+
+  const screenshots = images && images.length > 0
+    ? images.map((img) => img.image_url)
+    : [typedData.thumbnail_url].filter(Boolean) as string[];
+
+  // Map database row to LocalProject. Empty / missing fields are left empty
+  // so the UI can choose not to render them.
+  return {
+    id: typedData.id,
+    title: typedData.title,
+    slug: typedData.slug,
+    summary: typedData.summary,
+    description: typedData.description || "",
+    category: typedData.category,
+    technologies: typedData.technologies,
+    github_url: typedData.github_url,
+    live_url: typedData.live_url,
+    challenges: typedData.challenges,
+    future_plans: typedData.future_plans,
+    featured: typedData.featured,
+    published: typedData.published,
+    thumbnail_url: typedData.thumbnail_url,
+    role: typedData.role || "",
+    team_size: typedData.team_size || "",
+    duration: typedData.duration || "",
+    status: typedData.status || "",
+    metrics: typedData.metrics || "",
+    architecture_preview: typedData.architecture_preview || "",
+    lessons_learned: typedData.lessons_learned || "",
+    key_features: typedData.key_features || "",
+    architecture: typedData.architecture_preview || "",
+    screenshots,
+  };
 }
 
 async function getAdjacentProjects(currentSlug: string): Promise<{ prev: AdjacentProject | null; next: AdjacentProject | null }> {
-  try {
-    const supabase = createClient();
-    const { data: projects } = await supabase
-      .from("projects")
-      .select("title, slug, summary, category, thumbnail_url")
-      .eq("published", true)
-      .order("created_at", { ascending: false });
+  const supabase = createClient();
+  const { data } = await supabase
+    .from("projects")
+    .select("title, slug, summary, category, thumbnail_url")
+    .eq("published", true)
+    .order("created_at", { ascending: false });
 
-    if (projects && projects.length > 1) {
-      const idx = projects.findIndex((p) => p.slug === currentSlug);
-      if (idx !== -1) {
-        const prev = idx > 0 ? projects[idx - 1] : projects[projects.length - 1];
-        const next = idx < projects.length - 1 ? projects[idx + 1] : projects[0];
-        return { prev, next };
-      }
-    }
-  } catch (err) {
-    console.error("Error fetching adjacent projects:", err);
+  const projects = (data || []) as AdjacentProject[];
+
+  if (projects.length === 0 || projects.length === 1) {
+    return { prev: null, next: null };
   }
 
-  // Fallback with mock data
-  const mockEntries = Object.values(MOCK_PROJECTS);
-  const idx = mockEntries.findIndex((p) => p.slug === currentSlug);
-  if (idx !== -1 && mockEntries.length > 1) {
-    const prev = idx > 0 ? mockEntries[idx - 1] : mockEntries[mockEntries.length - 1];
-    const next = idx < mockEntries.length - 1 ? mockEntries[idx + 1] : mockEntries[0];
-    return {
-      prev: {
-        title: prev.title,
-        slug: prev.slug,
-        summary: prev.summary,
-        category: prev.category,
-        thumbnail_url: prev.thumbnail_url,
-      },
-      next: {
-        title: next.title,
-        slug: next.slug,
-        summary: next.summary,
-        category: next.category,
-        thumbnail_url: next.thumbnail_url,
-      },
-    };
+  const idx = projects.findIndex((p) => p.slug === currentSlug);
+  if (idx === -1) {
+    return { prev: null, next: null };
   }
 
-  return { prev: null, next: null };
+  const prev = idx > 0 ? projects[idx - 1] : projects[projects.length - 1];
+  const next = idx < projects.length - 1 ? projects[idx + 1] : projects[0];
+  return { prev, next };
 }
 
 export async function generateStaticParams() {
-  const params: Array<{ slug: string }> = [];
+  const supabase = createClient();
+  const { data: projects } = await supabase
+    .from("projects")
+    .select("slug")
+    .eq("published", true);
 
-  // Add mock project slugs
-  Object.keys(MOCK_PROJECTS).forEach((slug) => {
-    params.push({ slug });
-  });
-
-  try {
-    const supabase = createClient();
-    const { data: projects } = await supabase
-      .from("projects")
-      .select("slug")
-      .eq("published", true);
-
-    if (projects) {
-      projects.forEach((p) => {
-        if (p.slug && !MOCK_PROJECTS[p.slug]) {
-          params.push({ slug: p.slug });
-        }
-      });
-    }
-  } catch (err) {
-    console.warn("Could not fetch project slugs for generateStaticParams:", err);
+  if (!projects) {
+    return [];
   }
 
-  return params;
+  return projects
+    .filter((p): p is { slug: string } => typeof p.slug === "string" && p.slug.length > 0)
+    .map((p) => ({ slug: p.slug }));
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {

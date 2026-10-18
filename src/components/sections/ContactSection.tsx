@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { submitContactFormAction } from "@/actions/contact";
 import { BlurFade } from "@/components/ui/blur-fade";
 import { Particles } from "@/components/ui/particles";
@@ -20,24 +20,32 @@ interface ContactSectionProps {
   socials?: SocialLink[];
 }
 
+// Owner can default the GitHub link to this when no DB value exists.
+const DEFAULT_GITHUB_URL = "https://github.com/mohammadirfan90";
+
 type LogLine = { kind: "info" | "ok" | "err"; text: string };
 
 export function ContactSection({
   subtitle = "Ready for the next challenge",
   title = "Let's build something remarkable together.",
-  email = "hello@devportfolio.com",
-  phone = "+1 (555) 019-2834",
-  whatsapp = "+15550192834",
-  socials = [
-    { label: "LinkedIn", href: "#" },
-    { label: "GitHub", href: "#" },
-    { label: "X (Twitter)", href: "#" },
-  ],
+  email,
+  phone,
+  whatsapp,
+  socials,
 }: ContactSectionProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [logs, setLogs] = useState<LogLine[]>([]);
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement | null>(null);
+  // When this form was first rendered. Sent with the submission so the
+  // server can reject bots that fill the form in less than a few seconds.
+  const renderedAtRef = useRef<number>(Date.now());
+
+  // Ensure the timestamp is captured at the actual first paint, not at the
+  // first React commit (which can be slightly earlier in dev / streaming).
+  useEffect(() => {
+    renderedAtRef.current = Date.now();
+  }, []);
 
   const pushLog = (line: LogLine) => setLogs((prev) => [...prev, line]);
 
@@ -68,7 +76,7 @@ export function ContactSection({
     }
   };
 
-  const formattedWhatsapp = whatsapp.replace(/[^0-9]/g, "");
+  const formattedWhatsapp = (whatsapp || "").replace(/[^0-9]/g, "");
 
   // Field config — each renders as `> label: [input]_` in the terminal
   const fields: Array<{
@@ -211,6 +219,30 @@ export function ContactSection({
                   onSubmit={handleSubmit}
                   className="space-y-3 text-left"
                 >
+                  {/* Hidden honeypot — bots fill every field they see, humans
+                      will never see or fill this one. The server returns
+                      success without saving when this is non-empty. */}
+                  <div aria-hidden="true" style={{ position: "absolute", left: "-10000px", top: "auto", width: "1px", height: "1px", overflow: "hidden" }}>
+                    <label htmlFor="website-hp">Leave this field empty</label>
+                    <input
+                      id="website-hp"
+                      name="website"
+                      type="text"
+                      tabIndex={-1}
+                      autoComplete="off"
+                      defaultValue=""
+                    />
+                  </div>
+
+                  {/* Hidden render timestamp — paired with the server check
+                      that rejects submissions sent within the first few
+                      seconds. */}
+                  <input
+                    type="hidden"
+                    name="rendered_at"
+                    value={String(renderedAtRef.current)}
+                  />
+
                   {/* Field rows — terminal-style `> label: [input]_` */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {fields
@@ -312,17 +344,19 @@ export function ContactSection({
                   ↗ whatsapp
                 </a>
               )}
-              {socials.map((s) => (
-                <a
-                  key={s.label}
-                  href={s.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-accent transition-colors"
-                >
-                  ↗ {s.label.toLowerCase()}
-                </a>
-              ))}
+              {(socials ?? [])
+                .filter((s) => s.href && s.href !== "#")
+                .map((s) => (
+                  <a
+                    key={s.label}
+                    href={s.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-accent transition-colors"
+                  >
+                    ↗ {s.label.toLowerCase()}
+                  </a>
+                ))}
               <span className="ml-auto text-white/30 select-none">
                 cd ~/portfolio · exit 0
               </span>

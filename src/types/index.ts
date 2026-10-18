@@ -47,6 +47,25 @@ export interface ProjectImage {
   created_at?: string;
 }
 
+/**
+ * LocalProject is the shape consumed by the project detail view. The base
+ * `Project` already covers every case-study field used by the admin form;
+ * `LocalProject` only adds the optional gallery list and a mirror of the
+ * architecture text under a shorter alias.
+ */
+export interface LocalProject extends Project {
+  architecture?: string;
+  screenshots?: string[];
+}
+
+export interface AdjacentProject {
+  title: string;
+  slug: string;
+  summary: string;
+  category?: string;
+  thumbnail_url?: string;
+}
+
 export interface Skill {
   id: string;
   name: string;

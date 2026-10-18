@@ -11,7 +11,30 @@ interface SkillsSectionProps {
 }
 
 const secondarySkills = [
-  "Git", "GitHub", "Prisma", "Supabase", "Redis", "Docker", "Kubernetes", "SST", "Vercel", "Framer Motion", "Python", "SQL", "REST APIs", "CI/CD", "Jest", "Linux"
+  "Git",
+  "GitHub",
+  "PostgreSQL",
+  "Supabase",
+  "Drizzle ORM",
+  "MongoDB",
+  "Mongoose",
+  "Prisma",
+  "Zod",
+  "Hono",
+  "Express",
+  "Socket.IO",
+  "Stripe",
+  "Upstash Redis",
+  "Cloudinary",
+  "React Native (Expo)",
+  "TanStack Query",
+  "Vitest",
+  "Playwright",
+  "Nginx",
+  "Vercel",
+  "Framer Motion",
+  "REST APIs",
+  "SQL",
 ];
 
 export function SkillsSection({

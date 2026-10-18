@@ -442,7 +442,7 @@ function ProjectsManagerContent({ initialProjects }: ProjectsManagerProps) {
                   name="title"
                   defaultValue={editingProject.title || ""}
                   required
-                  placeholder="e.g. Skilltern"
+                  placeholder="e.g. DevConnect"
                   className="h-9.5 text-sm"
                 />
               </div>

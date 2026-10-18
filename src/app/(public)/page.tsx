@@ -29,32 +29,45 @@ export default async function Home() {
     supabase.from("social_links").select("*").order("display_order", { ascending: true }),
   ]);
 
+  // Only emit an address when we actually know the location. The schema.org
+  // address block is omitted entirely otherwise so we never lie about it.
+  const locationParts: string[] = profile?.location
+    ? profile.location.split(",").map((part: string) => part.trim()).filter(Boolean)
+    : [];
+  const addressBlock = locationParts.length > 0
+    ? {
+        "@type": "PostalAddress",
+        addressLocality: locationParts[0],
+        ...(locationParts[1] ? { addressRegion: locationParts[1] } : {}),
+        ...(locationParts[2] ? { addressCountry: locationParts[2] } : {}),
+      }
+    : undefined;
+
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Person",
-    "name": profile?.full_name || "Software Engineer",
+    "name": profile?.full_name || "Mohammad Irfan",
     "jobTitle": profile?.title || "Full-stack Developer",
     "url": process.env.NEXT_PUBLIC_SITE_URL || "https://your-portfolio.com",
-    "sameAs": socialLinks?.map((s) => s.url) || [
-      "https://github.com",
-      "https://linkedin.com"
-    ],
-    "knowsAbout": skills?.map((s) => s.name) || [
-      "React", "Next.js", "TypeScript", "Node.js", "Go", "PostgreSQL", "Tailwind CSS", "AWS", "Docker"
-    ],
-    "address": {
-      "@type": "PostalAddress",
-      "addressLocality": profile?.location?.split(",")[0] || "San Francisco",
-      "addressRegion": profile?.location?.split(",")[1]?.trim().split(" ")[0] || "CA",
-      "addressCountry": "US"
-    }
+    "sameAs": socialLinks && socialLinks.length > 0
+      ? socialLinks.map((s) => s.url)
+      : undefined,
+    "knowsAbout": skills && skills.length > 0
+      ? skills.map((s) => s.name)
+      : undefined,
+    ...(addressBlock ? { address: addressBlock } : {}),
   };
+
+  // Strip any keys that ended up undefined so the JSON-LD stays clean.
+  const cleanJsonLd = Object.fromEntries(
+    Object.entries(jsonLd).filter(([, value]) => value !== undefined)
+  );
 
   return (
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(cleanJsonLd) }}
       />
       <HeroSection
         isAvailable={settings?.is_available_for_hire ?? undefined}
@@ -64,10 +77,6 @@ export default async function Home() {
         bio={profile?.bio_description ?? undefined}
         profileImageUrl={profile?.avatar_url ?? undefined}
         resumeUrl={profile?.resume_url ?? undefined}
-        socials={socialLinks && socialLinks.length > 0 ? {
-          githubUrl: socialLinks.find(s => s.platform.toLowerCase() === "github")?.url ?? undefined,
-          linkedinUrl: socialLinks.find(s => s.platform.toLowerCase() === "linkedin")?.url ?? undefined,
-        } : undefined}
       />
       <AboutSection
         summary={profile?.bio_description ?? undefined}

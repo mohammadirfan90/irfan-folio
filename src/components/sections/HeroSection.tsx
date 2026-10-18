@@ -17,10 +17,6 @@ interface HeroSectionProps {
   bio?: string;
   profileImageUrl?: string;
   resumeUrl?: string;
-  socials?: {
-    githubUrl?: string;
-    linkedinUrl?: string;
-  };
 }
 
 export function HeroSection({
@@ -31,10 +27,6 @@ export function HeroSection({
   bio = "Architecting robust digital experiences with a focus on technical precision and editorial-grade user interfaces.",
   profileImageUrl,
   resumeUrl,
-  socials = {
-    githubUrl: "#",
-    linkedinUrl: "#",
-  },
 }: HeroSectionProps) {
   const displayImageUrl = profileImageUrl || "https://www.gstatic.com/labs-code/stitch/stitch-placeholder-300x300.svg";
   // Animation variants
@@ -119,31 +111,33 @@ export function HeroSection({
                   ]
                 </span>
               </a>
-              <a
-                href={resumeUrl || "#"}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group relative inline-block"
-              >
-                <span
-                  aria-hidden="true"
-                  className="absolute -left-4 top-1/2 -translate-y-1/2 text-accent opacity-0 -translate-x-1 transition-all duration-200 group-hover:opacity-100 group-hover:translate-x-0 font-label-mono"
+              {resumeUrl && (
+                <a
+                  href={resumeUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group relative inline-block"
                 >
-                  [
-                </span>
-                <ShinyButton className="bg-surface-container-low/70 text-on-surface hover:bg-surface-container-low hover:text-secondary border-outline-variant/30 rounded-lg font-semibold px-8 py-4 shadow-md active:scale-95 duration-150 transition-all font-label-mono text-label-mono h-auto">
-                  <span className="flex items-center gap-2 justify-center">
-                    Resume
-                    <ArrowUpRight className="w-4 h-4 text-secondary" />
+                  <span
+                    aria-hidden="true"
+                    className="absolute -left-4 top-1/2 -translate-y-1/2 text-accent opacity-0 -translate-x-1 transition-all duration-200 group-hover:opacity-100 group-hover:translate-x-0 font-label-mono"
+                  >
+                    [
                   </span>
-                </ShinyButton>
-                <span
-                  aria-hidden="true"
-                  className="absolute -right-4 top-1/2 -translate-y-1/2 text-accent opacity-0 translate-x-1 transition-all duration-200 group-hover:opacity-100 group-hover:translate-x-0 font-label-mono"
-                >
-                  ]
-                </span>
-              </a>
+                  <ShinyButton className="bg-surface-container-low/70 text-on-surface hover:bg-surface-container-low hover:text-secondary border-outline-variant/30 rounded-lg font-semibold px-8 py-4 shadow-md active:scale-95 duration-150 transition-all font-label-mono text-label-mono h-auto">
+                    <span className="flex items-center gap-2 justify-center">
+                      Resume
+                      <ArrowUpRight className="w-4 h-4 text-secondary" />
+                    </span>
+                  </ShinyButton>
+                  <span
+                    aria-hidden="true"
+                    className="absolute -right-4 top-1/2 -translate-y-1/2 text-accent opacity-0 translate-x-1 transition-all duration-200 group-hover:opacity-100 group-hover:translate-x-0 font-label-mono"
+                  >
+                    ]
+                  </span>
+                </a>
+              )}
             </div>
           </BlurFade>
         </div>

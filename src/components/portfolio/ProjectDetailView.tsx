@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState, useMemo } from "react";
 import Link from "next/link";
 import GithubSlugger from "github-slugger";
 import { Button } from "@/components/ui/button";
-import { LocalProject, AdjacentProject } from "@/app/(public)/projects/[slug]/page";
+import { LocalProject, AdjacentProject } from "@/types";
 import { MarkdownRenderer } from "@/components/markdown/MarkdownRenderer";
 import { motion, AnimatePresence } from "framer-motion";
 import {
