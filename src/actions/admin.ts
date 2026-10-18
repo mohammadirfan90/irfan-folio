@@ -1,14 +1,13 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth/require-admin";
 import { revalidatePath } from "next/cache";
 
 // 1. PROFILE MUTATION
 export async function updateProfile(formData: FormData) {
+  await requireAdmin();
   const supabase = await createClient();
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Unauthorized");
 
   const full_name = formData.get("full_name") as string;
   const title = formData.get("title") as string;
@@ -18,8 +17,11 @@ export async function updateProfile(formData: FormData) {
   const avatar_url = formData.get("avatar_url") as string || null;
   const resume_url = formData.get("resume_url") as string || null;
 
+  // Upsert needs an id; use the current admin's own id.
+  const { data: { user } } = await supabase.auth.getUser();
+
   const { error } = await supabase.from("profiles").upsert({
-    id: user.id,
+    id: user?.id,
     full_name,
     title,
     bio_description,
@@ -38,9 +40,8 @@ export async function updateProfile(formData: FormData) {
 
 // 2. SKILL MUTATIONS
 export async function upsertSkill(formData: FormData) {
+  await requireAdmin();
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Unauthorized");
 
   const id = formData.get("id") as string || undefined;
   const name = formData.get("name") as string;
@@ -65,9 +66,8 @@ export async function upsertSkill(formData: FormData) {
 }
 
 export async function deleteSkill(id: string) {
+  await requireAdmin();
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Unauthorized");
 
   const { error } = await supabase.from("skills").delete().eq("id", id);
   if (error) return { error: error.message };
@@ -78,9 +78,8 @@ export async function deleteSkill(id: string) {
 
 // 3. EXPERIENCE MUTATIONS
 export async function upsertExperience(formData: FormData) {
+  await requireAdmin();
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Unauthorized");
 
   const id = formData.get("id") as string || undefined;
   const role = formData.get("role") as string;
@@ -107,9 +106,8 @@ export async function upsertExperience(formData: FormData) {
 }
 
 export async function deleteExperience(id: string) {
+  await requireAdmin();
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Unauthorized");
 
   const { error } = await supabase.from("experiences").delete().eq("id", id);
   if (error) return { error: error.message };
@@ -120,9 +118,8 @@ export async function deleteExperience(id: string) {
 
 // 4. EDUCATION MUTATIONS
 export async function upsertEducation(formData: FormData) {
+  await requireAdmin();
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Unauthorized");
 
   const id = formData.get("id") as string || undefined;
   const degree = formData.get("degree") as string;
@@ -149,9 +146,8 @@ export async function upsertEducation(formData: FormData) {
 }
 
 export async function deleteEducation(id: string) {
+  await requireAdmin();
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Unauthorized");
 
   const { error } = await supabase.from("education").delete().eq("id", id);
   if (error) return { error: error.message };
@@ -162,22 +158,14 @@ export async function deleteEducation(id: string) {
 
 // 5. PROJECT MUTATIONS
 export async function upsertProject(formData: FormData) {
+  await requireAdmin();
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Unauthorized");
 
   const id = formData.get("id") as string || undefined;
   const title = formData.get("title") as string;
   const slug = formData.get("slug") as string;
   const summary = formData.get("summary") as string;
   const description = formData.get("description") as string || null;
-
-  console.log("--- UPSERT PROJECT IN SERVER ACTION ---");
-  console.log("ID:", id);
-  console.log("Title:", title);
-  console.log("Slug:", slug);
-  console.log("Thumbnail URL from Form:", formData.get("thumbnail_url"));
-  console.log("Gallery URLs from Form:", formData.get("gallery_urls"));
 
   const category = formData.get("category") as string;
   const technologiesRaw = formData.get("technologies") as string;
@@ -268,9 +256,8 @@ export async function upsertProject(formData: FormData) {
 }
 
 export async function deleteProject(id: string, slug: string) {
+  await requireAdmin();
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Unauthorized");
 
   const { error } = await supabase.from("projects").delete().eq("id", id);
   if (error) return { error: error.message };
@@ -282,9 +269,8 @@ export async function deleteProject(id: string, slug: string) {
 
 // 6. SITE SETTINGS MUTATION
 export async function updateSiteSettings(formData: FormData) {
+  await requireAdmin();
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Unauthorized");
 
   let id = formData.get("id") as string || undefined;
   const is_available_for_hire = formData.get("is_available_for_hire") === "true";
@@ -324,11 +310,10 @@ export async function updateSiteSettings(formData: FormData) {
   return { success: true };
 }
 
-// 7. ASSET UPLOAD WITH CLOUDINARY & SUPABASE FALLBACK
+// 7. ASSET UPLOAD WITH CLOUDINARY
 export async function uploadAssetAction(formData: FormData) {
+  await requireAdmin();
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Unauthorized");
 
   const file = formData.get("file") as File;
   const folder = formData.get("folder") as string || "portfolio";
@@ -342,8 +327,8 @@ export async function uploadAssetAction(formData: FormData) {
   const apiSecret = process.env.CLOUDINARY_API_SECRET;
 
   if (!cloudName || !apiKey || !apiSecret) {
-    return { 
-      error: "Cloudinary credentials (CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET) are not configured in your .env.local file." 
+    return {
+      error: "Cloudinary credentials (CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET) are not configured in your .env.local file."
     };
   }
 

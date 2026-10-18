@@ -40,10 +40,23 @@ export async function updateSession(request: NextRequest) {
   const isAccessingAdmin = request.nextUrl.pathname.startsWith("/admin");
   const isAccessingLogin = request.nextUrl.pathname === "/login";
 
-  // Protection logic:
-  // If request is for admin area and user is not logged in, redirect to login
-  if (isAccessingAdmin && !user) {
-    return NextResponse.redirect(new URL("/login", request.url));
+  // Protection logic for /admin:
+  // 1. Not logged in  -> /login
+  // 2. Logged in but not in public.admins -> /login
+  // The RSC layout (src/app/admin/layout.tsx) repeats this check server-side
+  // so the page itself is safe even if the matcher changes.
+  if (isAccessingAdmin) {
+    if (!user) {
+      return NextResponse.redirect(new URL("/login", request.url));
+    }
+    const { data: adminRow } = await supabase
+      .from("admins")
+      .select("user_id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (!adminRow) {
+      return NextResponse.redirect(new URL("/login", request.url));
+    }
   }
 
   // If request is for login page and user is already logged in, redirect to admin

@@ -1,20 +1,25 @@
 import React from "react";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth/require-admin";
 import { AboutForm } from "@/components/admin/AboutForm";
 
 export default async function AdminAboutPage() {
+  let user;
+  try {
+    user = await requireAdmin();
+  } catch {
+    redirect("/login");
+  }
+
   const supabase = await createClient();
 
-  // Get current user
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Unauthorized");
-
-  // Fetch profile
+  // Fetch profile for the current admin user
   const { data: profile } = await supabase
     .from("profiles")
     .select("*")
     .eq("id", user.id)
-    .single();
+    .maybeSingle();
 
   // Fetch site settings
   const { data: settings } = await supabase

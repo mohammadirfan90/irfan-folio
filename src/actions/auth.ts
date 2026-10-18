@@ -19,7 +19,10 @@ export async function login(prevState: any, formData: FormData) {
   });
 
   if (error) {
-    return { error: error.message };
+    // Do not return the raw Supabase error message back to the user
+    // (it can leak whether the email exists). Always show a generic message.
+    console.error("Login failed:", error);
+    return { error: "Invalid email or password." };
   }
 
   redirect("/admin");
